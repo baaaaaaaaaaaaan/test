@@ -736,8 +736,7 @@
 <!-- 견적 이력 페이지 -->
 <div id="page-history" class="main-page">
     <div class="hist-toolbar">
-        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 검색..." oninput="renderHistoryList()">
-        <button onclick="openSaveHistModal()" style="padding:8px 16px; background:#1e3a8a; color:white; border:none; border-radius:8px; font-size:0.82rem; font-weight:700; cursor:pointer; white-space:nowrap;">📝 이력 남기기</button>
+        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 / 담당자 검색..." oninput="renderHistoryList()">
     </div>
     <div id="historyList">
         <div class="hist-empty">저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.</div>
@@ -754,21 +753,22 @@
             <button onclick="closeSaveHistModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#64748b;">✕</button>
         </div>
         <div class="save-hist-body">
+            <div id="histCondBadges" style="margin-bottom:10px; display:flex; flex-wrap:wrap; gap:6px;"></div>
             <div class="save-hist-field">
-                <label>화주명 (수신처) *</label>
-                <input type="text" id="histCompany" placeholder="예: (주)ABC물류, 홍길동 화주">
+                <label>담당자 (견적 작성자) *</label>
+                <input type="text" id="histManager" placeholder="예: 홍길동 대리">
             </div>
             <div class="save-hist-field">
-                <label>담당자 (견적 작성자)</label>
-                <input type="text" id="histManager" placeholder="예: 김경평">
+                <label>수신처 (포딩사/화주) *</label>
+                <input type="text" id="histCompany" placeholder="예: 삼성물산, (주)ABC포딩">
             </div>
             <div class="save-hist-field">
                 <label>비고</label>
-                <input type="text" id="histNote" placeholder="예: 2024년 계약 갱신 검토">
+                <input type="text" id="histNote" placeholder="예: 계약 갱신 검토">
             </div>
-            <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; font-size:0.78rem; color:#64748b;">
-                <div style="font-weight:700; color:#475569; margin-bottom:4px;">📦 저장될 견적 내용</div>
-                <div id="histPreviewSummary">—</div>
+            <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#475569;">
+                <div style="font-weight:700; color:#1e3a8a; margin-bottom:8px;">📦 화주명 (건별 확인)</div>
+                <div id="histClientRows"></div>
             </div>
         </div>
         <div class="save-hist-footer">
@@ -32693,6 +32693,8 @@ function selectKakaoSuggestion(idx) {
     input.value = displayAddr;
     // 실작업지 주소 저장 (카트 담기 시 사용)
     window._currentWorkAddr = displayAddr;
+    // 장소명이 있으면 화주명으로 자동저장 (주소만 있으면 빈값)
+    window._currentClientName = (!item._isAddress && item.place_name) ? item.place_name : '';
 
     const listEl = document.getElementById('kakaoSuggestList');
     listEl.classList.remove('open');
@@ -33235,11 +33237,21 @@ function copyQuoteText(ft) {
     const isOneWay = currentType.startsWith('ow') ? '편도' : '왕복';
     const originName = document.getElementById('selectedText').innerText;
     const hasSurcharge = lastResult.hasSurcharge;
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
 
     function fareBlock(ftType) {
         const base = ftType === '20' ? lastResult.base20 : lastResult.base40;
         const q    = ftType === '20' ? lastResult.q20 : lastResult.q40;
-        const amt  = q - base; // 항상 최종-기본으로 계산해서 base+amt=q 보장
+        const amt  = q - base;
+        if (discount > 0) {
+            const safe = Math.round(q / (1 - discount));
+            if (hasSurcharge && amt > 0) {
+                const safeBase = Math.round(base / (1 - discount));
+                const safeAmt  = safe - safeBase;
+                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()} = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = 청구운임 ${q.toLocaleString()}원`;
+            }
+            return `${ftType}FT │ 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 청구운임 ${q.toLocaleString()}원`;
+        }
         if (hasSurcharge && amt > 0)
             return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
@@ -34139,11 +34151,21 @@ function copyQuoteText(ft) {
     const isOneWay = currentType.startsWith('ow') ? '편도' : '왕복';
     const originName = document.getElementById('selectedText').innerText;
     const hasSurcharge = lastResult.hasSurcharge;
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
 
     function fareBlock(ftType) {
         const base = ftType === '20' ? lastResult.base20 : lastResult.base40;
         const q    = ftType === '20' ? lastResult.q20 : lastResult.q40;
-        const amt  = q - base; // 항상 최종-기본으로 계산해서 base+amt=q 보장
+        const amt  = q - base;
+        if (discount > 0) {
+            const safe = Math.round(q / (1 - discount));
+            if (hasSurcharge && amt > 0) {
+                const safeBase = Math.round(base / (1 - discount));
+                const safeAmt  = safe - safeBase;
+                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()} = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = 청구운임 ${q.toLocaleString()}원`;
+            }
+            return `${ftType}FT │ 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 청구운임 ${q.toLocaleString()}원`;
+        }
         if (hasSurcharge && amt > 0)
             return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
@@ -34337,11 +34359,17 @@ function addToCart() {
         }).filter(Boolean).join(', ');
     }
 
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
+    // 안전운임 (쉐어율 적용 전 원본 고시운임 + 할증)
+    const safe40 = discount > 0 ? Math.round(lastResult.q40 / (1 - discount)) : lastResult.q40;
+    const safe20 = discount > 0 ? Math.round(lastResult.q20 / (1 - discount)) : lastResult.q20;
+
     // 복사 내용과 동일한 데이터 구조 저장
     const item = {
         id: Date.now(),
         origin: originName,
-        workAddr: window._currentWorkAddr || '',  // 실작업지 주소
+        workAddr: window._currentWorkAddr || '',    // 실작업지 주소
+        clientName: window._currentClientName || '', // 화주명 (장소명 있을때 자동)
         dest: fullAddr,
         dist: currentItem.d,
         isOneWay,
@@ -34360,6 +34388,9 @@ function addToCart() {
         surchargeItems: lastResult.surchargeItems || [],
         r40: lastResult.r40,
         r20: lastResult.r20,
+        discount: discount,       // 쉐어율 (0이면 쉐어 없음)
+        safe40: safe40,           // 안전운임 40ft
+        safe20: safe20,           // 안전운임 20ft
     };
 
     cartItems.push(item);
@@ -34425,12 +34456,14 @@ function renderCartList() {
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
             <div style="background:#f8fafc; border-radius:6px; padding:7px 10px; text-align:center;">
-                <div style="font-size:0.7rem; color:#64748b;">20FT 견적가</div>
+                <div style="font-size:0.7rem; color:#64748b;">20FT ${it.discount > 0 ? '청구운임' : '견적가'}</div>
                 <div style="font-size:0.88rem; font-weight:700; color:#1e293b;">${it.q20.toLocaleString()}원</div>
+                ${it.discount > 0 ? `<div style="font-size:0.65rem;color:#94a3b8;margin-top:1px;">안전운임 ${it.safe20.toLocaleString()}원</div>` : ''}
             </div>
             <div style="background:#f8fafc; border-radius:6px; padding:7px 10px; text-align:center;">
-                <div style="font-size:0.7rem; color:#64748b;">40FT 견적가</div>
+                <div style="font-size:0.7rem; color:#64748b;">40FT ${it.discount > 0 ? '청구운임' : '견적가'}</div>
                 <div style="font-size:0.88rem; font-weight:700; color:#1e293b;">${it.q40.toLocaleString()}원</div>
+                ${it.discount > 0 ? `<div style="font-size:0.65rem;color:#94a3b8;margin-top:1px;">안전운임 ${it.safe40.toLocaleString()}원</div>` : ''}
             </div>
         </div>
         ${it.hasSurcharge && it.surchargeText ? `<div style="font-size:0.72rem;color:#64748b;margin-top:5px;">할증: ${it.surchargeText}</div>` : ''}
@@ -34454,29 +34487,45 @@ function downloadCartPDF() {
         const rows = cartItems.map((it, idx) => {
             const surchShort = it.hasSurcharge && it.surchargeText ? it.surchargeText : '-';
             const wa = it.workAddr || '-';
+            const amt20cell = it.discount > 0
+                ? `<span style="font-size:9px;color:#64748b;">안전운임 ${it.safe20.toLocaleString()}원</span><br><span style="font-weight:700;color:#1e293b;">청구운임 ${it.q20.toLocaleString()}원</span>`
+                : `${it.q20.toLocaleString()}원`;
+            const amt40cell = it.discount > 0
+                ? `<span style="font-size:9px;color:#64748b;">안전운임 ${it.safe40.toLocaleString()}원</span><br><span style="font-weight:700;color:#1e293b;">청구운임 ${it.q40.toLocaleString()}원</span>`
+                : `${it.q40.toLocaleString()}원`;
             return `
-            <tr><td class="no">${idx*2+1}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">20FT</td><td class="ctr">${surchShort}</td><td class="amt">${it.q20.toLocaleString()}원</td></tr>
-            <tr><td class="no">${idx*2+2}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">40FT</td><td class="ctr">${surchShort}</td><td class="amt">${it.q40.toLocaleString()}원</td></tr>`;
+            <tr><td class="no">${idx*2+1}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">20FT</td><td class="ctr">${surchShort}</td><td class="amt">${amt20cell}</td></tr>
+            <tr><td class="no">${idx*2+2}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">40FT</td><td class="ctr">${surchShort}</td><td class="amt">${amt40cell}</td></tr>`;
         }).join('');
 
         const details = cartItems.map((it, idx) => {
             const buildDetail = (ft, base, q) => {
                 const amt = q - base;
+                const disc = it.discount || 0;
                 if (!it.hasSurcharge || amt <= 0) {
+                    if (disc > 0) {
+                        const safeQ = ft === '20FT' ? (it.safe20||Math.round(q/(1-disc))) : (it.safe40||Math.round(q/(1-disc)));
+                        return `<div class="dt-none"><span style="color:#94a3b8;font-size:9px;">안전운임 ${safeQ.toLocaleString()}원</span> → 청구운임 ${q.toLocaleString()}원</div>`;
+                    }
                     return `<div class="dt-none">할증 없음 — ${q.toLocaleString()}원</div>`;
                 }
-                const lines = it.listForCopy40.split('\n').filter(l => l.trim().startsWith('▪'));
+                const listSrc = ft === '20FT' ? (it.listForCopy20||it.listForCopy40) : it.listForCopy40;
+                const lines = (listSrc||'').split('\n').filter(l => l.trim().startsWith('▪'));
                 const breakdown = lines.map(l => {
                     const m = l.match(/▪\s*(.+?):\s*([\d,]+)원/);
                     return m ? `<span>• ${m[1]}: +${m[2]}원</span>` : '';
                 }).filter(Boolean).join('');
+                const safeQ2 = ft === '20FT' ? (it.safe20||Math.round(q/(1-disc))) : (it.safe40||Math.round(q/(1-disc)));
+                const finalLabel = disc > 0
+                    ? `<span class="dt-final">${q.toLocaleString()}원</span><span style="font-size:9px;color:#94a3b8;margin-left:4px;">(안전운임 ${safeQ2.toLocaleString()}원)</span>`
+                    : `<span class="dt-final">${q.toLocaleString()}원</span>`;
                 return `
                 <div class="dt-row">
                     <span class="dt-base">기본 ${base.toLocaleString()}원</span>
                     <span class="dt-plus">+</span>
                     <span class="dt-surch">할증 ${amt.toLocaleString()}원</span>
                     <span class="dt-eq">=</span>
-                    <span class="dt-final">${q.toLocaleString()}원</span>
+                    ${finalLabel}
                 </div>
                 ${breakdown ? `<div class="dt-breakdown">${breakdown}</div>` : ''}`;
             };
@@ -34963,13 +35012,35 @@ function openSaveHistModal(cartSnapshot) {
     const items = cartSnapshot || cartItems;
     if (!items.length) { alert('견적 카트에 담긴 내용이 없습니다.'); return; }
     window._histCartSnapshot = items;
-    document.getElementById('histCompany').value = '';
     document.getElementById('histManager').value = '';
+    document.getElementById('histCompany').value = '';
     document.getElementById('histNote').value = '';
-    const summary = items.map((it, i) =>
-        `${i+1}. ${it.origin} → ${it.dest} (${it.dist}km) | 20FT: ${it.q20.toLocaleString()}원 / 40FT: ${it.q40.toLocaleString()}원`
-    ).join('<br>');
-    document.getElementById('histPreviewSummary').innerHTML = summary;
+
+    // 건별 화주명 입력 렌더링
+    const rowsEl = document.getElementById('histClientRows');
+    rowsEl.innerHTML = items.map((it, i) => {
+        const autoName = it.clientName || '';
+        const label = `${i+1}. ${it.origin} → ${it.dest}`;
+        return `<div style="margin-bottom:8px;">
+            <div style="font-size:0.75rem; color:#64748b; margin-bottom:3px;">${label}</div>
+            <input type="text" id="histClient_${i}" value="${autoName}"
+                placeholder="화주명 입력"
+                style="width:100%; padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; outline:none; box-sizing:border-box;">
+        </div>`;
+    }).join('');
+
+    // 조건배지 렌더링
+    const badgesEl = document.getElementById('histCondBadges');
+    if (badgesEl) {
+        const first = items[0];
+        const badges = [];
+        if (first.eraLabel) badges.push(`<span style="background:#dbeafe;color:#1e3a8a;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${first.eraLabel}</span>`);
+        if (first.surchargeText) badges.push(`<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">할증: ${first.surchargeText}</span>`);
+        if (first.discount > 0) badges.push(`<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">쉐어 ${Math.round(first.discount*100)}%</span>`);
+        if (first.isMultiSurcharge) badges.push(`<span style="background:#fce7f3;color:#9d174d;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">다중할증</span>`);
+        badgesEl.innerHTML = badges.join('');
+    }
+
     document.getElementById('saveHistModal').classList.add('open');
 }
 function closeSaveHistModal() {
@@ -34980,23 +35051,31 @@ function closeSaveHistOutside(e) {
 }
 
 function confirmSaveHist() {
+    const manager = document.getElementById('histManager').value.trim();
     const company = document.getElementById('histCompany').value.trim();
-    if (!company) { alert('화주명을 입력해주세요.'); return; }
+    if (!manager) { alert('담당자를 입력해주세요.'); return; }
+    if (!company) { alert('수신처를 입력해주세요.'); return; }
     const items = window._histCartSnapshot || cartItems;
+
+    // 건별 화주명 수집
+    const clientNames = items.map((_, i) => {
+        const el = document.getElementById(`histClient_${i}`);
+        return el ? el.value.trim() : '';
+    });
+
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} ${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
-    const eraLabel = items[0]?.eraLabel || '알 수 없음';
-    const condRound = '사사오입O';
+
     const record = {
         id: Date.now(),
         date: dateStr,
+        manager: manager,
         company: company,
-        manager: document.getElementById('histManager').value.trim(),
         note: document.getElementById('histNote').value.trim(),
-        eraLabel: eraLabel,
-        eraNum: 1,
-        items: items.map(it => ({...it})),
-        condStr: `${eraLabel} | ${condRound}`
+        items: items.map((it, i) => ({
+            ...it,
+            clientName: clientNames[i] || it.clientName || '',
+        })),
     };
     const hist = getHistoryData();
     hist.unshift(record);
@@ -35036,17 +35115,27 @@ function renderHistoryList() {
         return;
     }
     el.innerHTML = filtered.map(h => {
-        const routes = h.items.map((it,i) => `${i+1}. ${it.origin} → ${it.dest} (${it.dist}km)`).join(' / ');
+        const routes = h.items.map((it,i) => {
+            const client = it.clientName ? ` [${it.clientName}]` : '';
+            return `${i+1}. ${it.origin} → ${it.dest}${client} (${it.dist}km)`;
+        }).join('<br>');
+        // 조건배지: eraLabel은 items[0]에, 구버전은 h.eraLabel
+        const eraLabel = h.items?.[0]?.eraLabel || h.eraLabel || h.condStr || '';
+        const surchargeText = h.items?.[0]?.surchargeText || '';
+        const discount = h.items?.[0]?.discount || 0;
+        const condBadges = [
+            eraLabel ? `<span class="hist-cond-badge era">${eraLabel}</span>` : '',
+            surchargeText ? `<span class="hist-cond-badge rate">${surchargeText}</span>` : '',
+            discount > 0 ? `<span class="hist-cond-badge rate">쉐어 ${Math.round(discount*100)}%</span>` : '',
+            h.note ? `<span class="hist-cond-badge rate">📌 ${h.note}</span>` : '',
+        ].filter(Boolean).join('');
         return `<div class="hist-card">
             <div class="hist-card-top">
-                <div class="hist-card-company">🏢 ${h.company}${h.manager?` · ${h.manager}`:''}</div>
+                <div class="hist-card-company">📋 ${h.company}${h.manager?` · ${h.manager}`:''}</div>
                 <div class="hist-card-date">${h.date}</div>
             </div>
             <div class="hist-card-routes">${routes}</div>
-            <div class="hist-card-cond">
-                <span class="hist-cond-badge era">${h.eraLabel||h.condStr||''}</span>
-                ${h.note?`<span class="hist-cond-badge rate">📌 ${h.note}</span>`:''}
-            </div>
+            <div class="hist-card-cond">${condBadges}</div>
             <div class="hist-card-actions">
                 <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">🔍 상세보기</button>
                 <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">🔄 재견적</button>
@@ -35218,17 +35307,7 @@ function saveRequoteAsNew() {
     alert('✅ 재견적 결과가 새 이력으로 저장되었습니다.');
 }
 
-// 카트 모달에 이력 남기기 버튼 추가 (동적)
-(function() {
-    const cartFooter = document.querySelector('#cartModal .cart-modal > div:last-child > div');
-    if (cartFooter) {
-        const btn = document.createElement('button');
-        btn.textContent = '📝 이력 남기기';
-        btn.style.cssText = 'flex:1; padding:12px; background:#7c3aed; color:white; border:none; border-radius:8px; font-weight:700; font-size:0.9rem; cursor:pointer;';
-        btn.onclick = () => openSaveHistModal();
-        cartFooter.appendChild(btn);
-    }
-})();
+// 카트 동적 버튼 제거됨 (HTML에 직접 포함)
 </script>
 </body>
 </html>
