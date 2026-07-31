@@ -32547,15 +32547,29 @@ function runSearch(val) {
     val = val.trim();
     if (val.length < 2) { 
         document.getElementById('resultBox').style.display = 'none';
-        currentItem = null; return; 
+        currentItem = null;
+        window._currentWorkAddr = '';
+        window._currentClientName = '';
+        return; 
     }
     const searchKeyword = val.replace(/\s+/g, '');
     const match = getDatabase()[currentType].find(item => {
         const fullAddress = `${item.s} ${item.g || ''} ${item.e}`.replace(/\s+/g, '');
         return fullAddress.includes(searchKeyword);
     });
-    if (match) { currentItem = match; calculateFare(); } 
-    else { document.getElementById('resultBox').style.display = 'none'; currentItem = null;
+    if (match) {
+        currentItem = match;
+        // 직접 타이핑 매칭 시 카카오 선택이 아니므로 workAddr = 입력값, clientName = 없음
+        if (!window._currentWorkAddr || window._currentWorkAddr !== val) {
+            window._currentWorkAddr = val;
+            window._currentClientName = '';
+        }
+        calculateFare();
+    } else {
+        document.getElementById('resultBox').style.display = 'none';
+        currentItem = null;
+        window._currentWorkAddr = '';
+        window._currentClientName = '';
     }
 }
 
@@ -32668,6 +32682,9 @@ function onSearchInput(val) {
 }
 
 function renderKakaoSuggestions(items) {
+    // 현재 검색창이 비어있으면 렌더링 무시 (비동기 콜백이 늦게 도착한 경우)
+    const currentVal = (document.getElementById('mainSearchInput')?.value || '').trim();
+    if (currentVal.length < 2) return;
     const listEl = document.getElementById('kakaoSuggestList');
     listEl.innerHTML = items.map((item, idx) => {
         const addr = item.road_address_name || item.address_name || '';
@@ -32737,6 +32754,11 @@ function selectKakaoSuggestion(idx) {
 function applyMatchResult(matched) {
     if (matched) {
         currentItem = matched;
+        // _currentWorkAddr가 아직 세팅 안 됐으면 검색창 현재값으로 세팅
+        if (!window._currentWorkAddr) {
+            const inputVal = (document.getElementById('mainSearchInput')?.value || '').trim();
+            window._currentWorkAddr = inputVal;
+        }
         calculateFare();
         showKakaoMatchNotice(true);
     } else {
