@@ -33248,12 +33248,15 @@ function copyQuoteText(ft) {
             if (hasSurcharge && amt > 0) {
                 const safeBase = Math.round(base / (1 - discount));
                 const safeAmt  = safe - safeBase;
-                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()} = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = 청구운임 ${q.toLocaleString()}원`;
+                const rPct2 = ftType === '20' ? lastResult.r20 : lastResult.r40;
+                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()}(${rPct2}%) = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct2}%) = 청구운임 ${q.toLocaleString()}원`;
             }
             return `${ftType}FT │ 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 청구운임 ${q.toLocaleString()}원`;
         }
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -33351,8 +33354,10 @@ function copyCarrierFareText(ft) {
         const base = ftType === '20' ? base20 : base40;
         const q    = ftType === '20' ? carrier20 : carrier40;
         const amt  = q - base;  // 운수사는 base/q 모두 동일 기준이라 차이로 계산
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34162,12 +34167,15 @@ function copyQuoteText(ft) {
             if (hasSurcharge && amt > 0) {
                 const safeBase = Math.round(base / (1 - discount));
                 const safeAmt  = safe - safeBase;
-                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()} = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = 청구운임 ${q.toLocaleString()}원`;
+                const rPct2 = ftType === '20' ? lastResult.r20 : lastResult.r40;
+                return `${ftType}FT │ 기본 ${safeBase.toLocaleString()} + 할증 ${safeAmt.toLocaleString()}(${rPct2}%) = 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct2}%) = 청구운임 ${q.toLocaleString()}원`;
             }
             return `${ftType}FT │ 안전운임 ${safe.toLocaleString()}원\n${ftType}FT │ 청구운임 ${q.toLocaleString()}원`;
         }
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34265,8 +34273,10 @@ function copyCarrierFareText(ft) {
         const base = ftType === '20' ? base20 : base40;
         const q    = ftType === '20' ? carrier20 : carrier40;
         const amt  = q - base;  // 운수사는 base/q 모두 동일 기준이라 차이로 계산
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34486,7 +34496,11 @@ function downloadCartPDF() {
     function buildCard() {
         const rows = cartItems.map((it, idx) => {
             const surchShort = it.hasSurcharge && it.surchargeText ? it.surchargeText : '-';
-            const wa = it.workAddr || '-';
+            const waName = it.clientName || '';
+            const waAddr = it.workAddr || '';
+            const wa = waName && waAddr ? `${waName}<br><span style="font-size:9px;color:#64748b;">${waAddr}</span>`
+                      : waName ? waName
+                      : waAddr ? waAddr : '-';
             const amt20cell = it.discount > 0
                 ? `<span style="font-size:9px;color:#64748b;">안전운임 ${it.safe20.toLocaleString()}원</span><br><span style="font-weight:700;color:#1e293b;">청구운임 ${it.q20.toLocaleString()}원</span>`
                 : `${it.q20.toLocaleString()}원`;
@@ -34729,7 +34743,7 @@ async function downloadCartExcel() {
             const bg = (no % 2 === 0) ? lightBg : white;
             const r = ws.getRow(rowIdx);
             r.height = 18;
-            [[1,no,C],[2,it.origin,C],[3,it.workAddr||'-',C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,q,C]].forEach(([col,val,align]) => {
+            [[1,no,C],[2,it.origin,C],[3,(it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-'),C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,q,C]].forEach(([col,val,align]) => {
                 const cell = r.getCell(col);
                 cell.value = val;
                 cell.style = {
@@ -34780,7 +34794,7 @@ async function downloadCartExcel() {
             const bg = (no % 2 === 0) ? lightBg : white;
             const r = ws.getRow(rowIdx);
             r.height = Math.max(20, lineCount * 16);
-            [[1,no,C],[2,it.origin,C],[3,it.workAddr||'-',C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,detail,C],[8,q,C]].forEach(([col,val,align]) => {
+            [[1,no,C],[2,it.origin,C],[3,(it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-'),C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,detail,C],[8,q,C]].forEach(([col,val,align]) => {
                 const cell = r.getCell(col);
                 cell.value = val;
                 const isSurch = col===7 && it.hasSurcharge;
@@ -35162,7 +35176,7 @@ function openPreviewFromHist(id) {
         <tr>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${i*2+1}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.origin}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.workAddr||'-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.clientName&&it.workAddr?it.clientName+'<br><span style="font-size:0.72rem;color:#64748b;">'+it.workAddr+'</span>':it.clientName||it.workAddr||'-'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.dest}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${it.dist}km</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">20FT</td>
@@ -35172,7 +35186,7 @@ function openPreviewFromHist(id) {
         <tr>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${i*2+2}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.origin}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.workAddr||'-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.clientName&&it.workAddr?it.clientName+'<br><span style="font-size:0.72rem;color:#64748b;">'+it.workAddr+'</span>':it.clientName||it.workAddr||'-'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.dest}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${it.dist}km</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">40FT</td>
