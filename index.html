@@ -35358,7 +35358,7 @@ function renderHistoryList() {
     }
 
     const rows = filtered.map((h, fidx) => {
-        const histIdx = hist.indexOf(h);
+        const histIdx = hist.findIndex(item => item.id === h.id);
         const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||h.condStr||'';
         const surchargeText = h.items?.[0]?.surchargeText||'';
         const discount = h.items?.[0]?.discount||0;
