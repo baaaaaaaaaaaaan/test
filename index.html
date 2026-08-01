@@ -118,7 +118,7 @@
         .map-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55);
             z-index:2000; align-items:center; justify-content:center; }
         .map-modal-overlay.open { display:flex; }
-        .map-modal-box { background:white; border-radius:14px; width:94vw; max-width:800px;
+        .map-modal-box { background:white; border-radius:14px; width:96vw; max-width:1000px;
             box-shadow:0 20px 40px rgba(0,0,0,0.3); overflow:hidden; display:flex; flex-direction:column; }
         .map-modal-header { display:flex; align-items:center; justify-content:space-between;
             padding:14px 16px 10px; border-bottom:1px solid #e2e8f0; }
@@ -131,7 +131,7 @@
         .map-tab-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
         .direction-btn { margin-left:auto; background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
         .direction-btn:hover { background:#dc2626; color:white; }
-        .map-modal-view { width:100%; height:500px; }
+        .map-modal-view { width:100%; height:560px; }
 
         .sc-section { background: #fef3c7;
             border: 1px solid #fde68a; padding: 12px; border-radius: 10px; margin-bottom: 12px;
@@ -174,7 +174,7 @@
 
         /* ===== PC 2컬럼 레이아웃 ===== */
         @media (min-width: 900px) {
-            .map-modal-box { max-width: 900px; }
+            .map-modal-box { max-width: 1100px; }
             .map-modal-view { height: 560px; }
             .pc-layout { display: grid; grid-template-columns: 400px 1fr; gap: 28px; align-items: start; }
             .pc-left { position: sticky; top: 20px; }
@@ -32880,9 +32880,30 @@ function showMapPanel(lat, lng, placeName) {
     // 지도보기 버튼만 표시 (팝업은 버튼 클릭 시 열림)
     document.getElementById('mapBtnWrap').style.display = 'block';
     const linkEl = document.getElementById('kakaoDirectionLink');
-    linkEl.href = `https://map.kakao.com/link/to/${encodeURIComponent(currentMapCoord.placeName)},${lat},${lng}`;
+    // 현재 선택된 거점을 출발지로 설정
+    const originText = document.getElementById('selectedText')?.textContent?.trim() || '';
+    const originInfo = ORIGIN_ADDR_MAP[originText];
+    if (originInfo) {
+        // 출발지 + 도착지 모두 포함한 길찾기 URL
+        linkEl.href = `https://map.kakao.com/link/from/${encodeURIComponent(originInfo.name)},${originInfo.lat},${originInfo.lng}/to/${encodeURIComponent(currentMapCoord.placeName)},${lat},${lng}`;
+    } else {
+        linkEl.href = `https://map.kakao.com/link/to/${encodeURIComponent(currentMapCoord.placeName)},${lat},${lng}`;
+    }
     document.getElementById('mapModalTitle').textContent = `📍 ${placeName}`;
 }
+
+
+// ─── 거점별 출발지 주소/좌표 매핑 ───────────────────────────────
+const ORIGIN_ADDR_MAP = {
+    '평택항 기점':    { name: '한진평택컨테이너터미널', addr: '경기도 평택시 포승읍 평택항만길 181-57', lat: 36.9745, lng: 126.8302 },
+    '부산신항 기점':  { name: '부산신항', addr: '부산광역시 강서구 성북동 1475', lat: 35.0726, lng: 128.8138 },
+    '부산북항 기점':  { name: '부산북항(신선대)', addr: '부산광역시 남구 신선로 294', lat: 35.0749, lng: 129.0784 },
+    '인천항 기점':    { name: '인천항(내항)', addr: '인천광역시 중구 항동7가 1', lat: 37.4685, lng: 126.6167 },
+    '인천신항 기점':  { name: '인천신항(SNCT)', addr: '인천광역시 연수구 신항대로 707', lat: 37.3516, lng: 126.6186 },
+    '인천국제여객 기점': { name: '인천국제여객터미널', addr: '인천광역시 연수구 국제항만대로326번길 57', lat: 37.3906, lng: 126.6361 },
+    '광양항 기점':    { name: '광양항(컨테이너부두)', addr: '전라남도 광양시 항만대로 465', lat: 34.9178, lng: 127.7289 },
+    '의왕ICD 기점':   { name: '의왕ICD 제1터미널', addr: '경기도 의왕시 오봉로 175', lat: 37.3547, lng: 126.9984 },
+};
 
 function openMapModal() {
     if (!currentMapCoord) return;
