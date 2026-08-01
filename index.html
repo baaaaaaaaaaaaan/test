@@ -35243,6 +35243,7 @@ function confirmSaveHist() {
     hist.unshift(record);
     setHistoryData(hist);
     closeSaveHistModal();
+    closeCartModal();
     sendToGoogleSheet(record);
     alert('✅ 견적 이력이 저장되었습니다.');
     switchMainTab('history');
@@ -35435,7 +35436,8 @@ function renderHistoryList() {
 
 function deleteHist(id) {
     if (!confirm('이 이력을 삭제하시겠습니까?')) return;
-    setHistoryData(getHistoryData().filter(h => h.id !== id));
+    // id가 숫자형/문자열 모두 처리
+    setHistoryData(getHistoryData().filter(h => String(h.id) !== String(id)));
     renderHistoryList();
 }
 
