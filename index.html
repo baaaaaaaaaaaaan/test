@@ -35277,7 +35277,7 @@ function loadHistoryFromSheet() {
                 const key = `${row['저장일시']}_${row['담당자']}_${row['수신처']}`;
                 if (!grouped[key]) {
                     grouped[key] = {
-                        id: key,
+                        id: Date.now() + Math.random(), // 숫자형 id로 통일
                         date: String(row['저장일시'] || ''),
                         manager: row['담당자'] || '',
                         office: row['사무소'] || '',
@@ -35405,9 +35405,9 @@ function renderHistoryList() {
             <td style="padding:5px 8px;border:${B};text-align:right;vertical-align:middle;">${amtCell}</td>
             <td style="padding:5px 8px;border:${B};white-space:nowrap;vertical-align:middle;text-align:center;>
                 <div style="display:flex;flex-direction:column;gap:2px;">
-                    <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})" style="font-size:0.75rem;padding:3px 7px;">상세</button>
-                    <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})" style="font-size:0.75rem;padding:3px 7px;">재견적</button>
-                    <button class="hist-btn hist-btn-del" onclick="deleteHist(${h.id})" style="font-size:0.75rem;padding:3px 7px;">🗑️</button>
+                    <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">상세</button>
+                    <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">재견적</button>
+                    <button class="hist-btn hist-btn-del" onclick="deleteHist(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">🗑️</button>
                 </div>
             </td>
             <td style="padding:5px 8px;border:${B};vertical-align:middle;color:#475569;font-size:0.82rem;">${h.note||'-'}</td>
@@ -35434,18 +35434,19 @@ function renderHistoryList() {
     </div>`;
 }
 
-function deleteHist(id) {
+function deleteHist(idx) {
     if (!confirm('이 이력을 삭제하시겠습니까?')) return;
-    // id가 숫자형/문자열 모두 처리
-    setHistoryData(getHistoryData().filter(h => String(h.id) !== String(id)));
+    const hist = getHistoryData();
+    hist.splice(idx, 1);
+    setHistoryData(hist);
     renderHistoryList();
 }
 
 // ─── 견적서 미리보기 팝업 ───────────────────────────────
 let _previewRecord = null;
 
-function openPreviewFromHist(id) {
-    const rec = getHistoryData().find(h => h.id === id);
+function openPreviewFromHist(idx) {
+    const rec = getHistoryData()[idx];
     if (!rec) return;
     _previewRecord = rec;
     const rows = rec.items.map((it, i) => `
@@ -35512,8 +35513,8 @@ function downloadPreviewPDF() {
 // ─── 재견적 팝업 ───────────────────────────────
 let _requoteRecord = null;
 
-function openRequoteModal(id) {
-    const rec = getHistoryData().find(h => h.id === id);
+function openRequoteModal(idx) {
+    const rec = getHistoryData()[idx];
     if (!rec) return;
     _requoteRecord = rec;
     document.getElementById('requoteOrigInfo').innerHTML =
