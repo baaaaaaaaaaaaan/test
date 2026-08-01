@@ -35276,7 +35276,7 @@ function loadHistoryFromSheet() {
             const grouped = {};
             const keyOrder = [];
             sheetData.forEach(row => {
-                const key = `${row['저장일시']}||${row['담당자']}||${row['수신처']}`;
+                const key = `${String(row['저장일시']).substring(0,16)}||${row['담당자']}||${row['수신처']}`;
                 if (!grouped[key]) {
                     grouped[key] = {
                         id: key,
