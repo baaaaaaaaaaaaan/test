@@ -35440,23 +35440,17 @@ function deleteHist(idx) {
     const hist = getHistoryData();
     const record = hist[idx];
     if (!record) return;
-    // 구글 시트에서 삭제
+    hist.splice(idx, 1);
+    setHistoryData(hist);
+    renderHistoryList();
+    // 구글 시트에서 삭제 (POST로)
     if (SHEET_URL && record.id) {
-        fetch(SHEET_URL + '?action=delete&key=' + encodeURIComponent(record.id))
-            .then(() => {
-                hist.splice(idx, 1);
-                setHistoryData(hist);
-                renderHistoryList();
-            })
-            .catch(() => {
-                hist.splice(idx, 1);
-                setHistoryData(hist);
-                renderHistoryList();
-            });
-    } else {
-        hist.splice(idx, 1);
-        setHistoryData(hist);
-        renderHistoryList();
+        fetch(SHEET_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', key: record.id })
+        }).catch(err => console.log('삭제 오류:', err));
     }
 }
 
