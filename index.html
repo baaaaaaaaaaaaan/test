@@ -659,9 +659,9 @@
                 <button class="copy-btn" id="copyBtn40" onclick="copyQuoteText('40')" style="margin-top:0; padding:12px 10px; width:auto; flex-shrink:0;">40FT</button>
             </div>
             <div id="carrierBtnWrap" style="display:flex; gap:6px; margin-top:6px;">
-                <button class="copy-btn carrier-btn" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1; width:auto; font-size:0.88rem; padding:12px;">🚚 운수사 거래용 복사</button>
-                <button class="copy-btn carrier-btn" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; width:auto; flex-shrink:0; font-size:0.88rem;">20FT</button>
-                <button class="copy-btn carrier-btn" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; width:auto; flex-shrink:0; font-size:0.88rem;">40FT</button>
+                <button class="copy-btn carrier-btn" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1; width:auto;">🚚 운수사 거래용 복사</button>
+                <button class="copy-btn carrier-btn" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; width:auto; flex-shrink:0;">20FT</button>
+                <button class="copy-btn carrier-btn" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; width:auto; flex-shrink:0;">40FT</button>
             </div>
             <button id="cmpModalBtn" class="copy-btn" onclick="openCmpModal()" style="margin-top:8px; background:#475569;">📊 2월 / 8월 운임 비교</button>
             <button class="copy-btn" onclick="addToCart()" style="margin-top:8px; background:#166534; font-size:0.95rem;">🛒 견적 담기</button>
@@ -35412,7 +35412,7 @@ function renderHistoryList() {
         const rowBg = fidx%2===0 ? 'white' : '#f8fafc';
         const B = '0.5px solid #e2e8f0';
         return `<tr style="background:${rowBg};">
-            <td style="padding:5px 8px;border:${B};white-space:nowrap;font-size:0.8rem;color:#475569;vertical-align:middle;text-align:center;">${h.date.substring(0,10)}</td>
+            <td style="padding:5px 8px;border:${B};white-space:nowrap;font-size:0.8rem;color:#475569;vertical-align:middle;text-align:center;">${(()=>{const d=h.date||''; const m=d.match(/(\d{4})[\-.\/](\d{2})[\-.\/](\d{2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:d.substring(0,10);})()}</td>
             <td style="padding:5px 8px;border:${B};white-space:nowrap;vertical-align:middle;">
                 <div style="font-weight:700;font-size:0.85rem;color:#1e293b;">${h.manager||'-'}</div>
                 ${h.office?`<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${h.office}</div>`:''}
