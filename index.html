@@ -35357,7 +35357,8 @@ function renderHistoryList() {
         return;
     }
 
-    const rows = filtered.map((h, idx) => {
+    const rows = filtered.map((h, fidx) => {
+        const histIdx = hist.indexOf(h);
         const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||h.condStr||'';
         const surchargeText = h.items?.[0]?.surchargeText||'';
         const discount = h.items?.[0]?.discount||0;
@@ -35405,9 +35406,9 @@ function renderHistoryList() {
             <td style="padding:5px 8px;border:${B};text-align:right;vertical-align:middle;">${amtCell}</td>
             <td style="padding:5px 8px;border:${B};white-space:nowrap;vertical-align:middle;text-align:center;>
                 <div style="display:flex;flex-direction:column;gap:2px;">
-                    <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">상세</button>
-                    <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">재견적</button>
-                    <button class="hist-btn hist-btn-del" onclick="deleteHist(${getHistoryData().indexOf(h)})" style="font-size:0.75rem;padding:3px 7px;">🗑️</button>
+                    <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${histIdx})" style="font-size:0.75rem;padding:3px 7px;">상세</button>
+                    <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${histIdx})" style="font-size:0.75rem;padding:3px 7px;">재견적</button>
+                    <button class="hist-btn hist-btn-del" onclick="deleteHist(${histIdx})" style="font-size:0.75rem;padding:3px 7px;">🗑️</button>
                 </div>
             </td>
             <td style="padding:5px 8px;border:${B};vertical-align:middle;color:#475569;font-size:0.82rem;">${h.note||'-'}</td>
