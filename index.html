@@ -35270,7 +35270,7 @@ function confirmSaveHist() {
         body: JSON.stringify(record)
     });
     alert('✅ 견적 이력이 저장되었습니다.');
-    switchMainTab('history');
+    setTimeout(() => switchMainTab('history'), 1500);
 }
 
 // ─── 구글시트 연동 ───────────────────────────────
@@ -35302,7 +35302,18 @@ function loadHistoryFromSheet() {
                 if (!grouped[key]) {
                     grouped[key] = {
                         id: key,
-                        date: String(row['저장일시'] || ''),
+                        date: (()=>{
+                        const raw = String(row['저장일시'] || '');
+                        // 이미 yyyy-MM-dd 형태면 그대로
+                        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.substring(0,16);
+                        // "Sat Aug 01 2026 ..." 영어 형태면 파싱
+                        try { const d = new Date(raw); if (!isNaN(d)) {
+                            const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+                            const h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
+                            return `${y}-${mo}-${day} ${h}:${mi}`;
+                        }} catch(e){}
+                        return raw.substring(0,16);
+                    })(),
                         manager: row['담당자'] || '',
                         office: row['사무소'] || '',
                         company: row['수신처'] || '',
