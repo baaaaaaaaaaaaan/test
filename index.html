@@ -97,8 +97,8 @@
 
         .kakao-suggest-list { display: none; position: absolute; top: 100%; left: 0; width: 100%;
             background: white; border: 2px solid #94a3b8; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            z-index: 1100; max-height: 260px; overflow-y: auto; margin-top: 4px; box-sizing: border-box; }
-        .kakao-suggest-list.open { display: block; }
+            z-index: 1100; max-height: 260px; overflow-y: auto; margin-top: 4px; box-sizing: border-box; pointer-events: none; }
+        .kakao-suggest-list.open { display: block; pointer-events: auto; }
         .kakao-suggest-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .kakao-suggest-item:last-child { border-bottom: none; }
         .kakao-suggest-item:hover { background: #f1f5f9; }
@@ -437,7 +437,7 @@
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h3 style="margin:0;">📊 경평물류 안전운임 조회</h3>
-        <div class="cart-badge">
+        <div class="cart-badge" style="position:relative; z-index:1200;">
             <button onclick="openCartModal()" style="background:#166534; color:white; border:none; border-radius:8px; padding:7px 14px; font-size:0.82rem; font-weight:700; cursor:pointer;">🛒 견적 카트</button>
             <span id="cartBadge" class="cart-count" style="display:none;">0</span>
         </div>
@@ -735,8 +735,14 @@
 
 <!-- 견적 이력 페이지 -->
 <div id="page-history" class="main-page">
-    <div class="hist-toolbar">
-        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 / 담당자 검색..." oninput="renderHistoryList()">
+    <div class="hist-toolbar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 / 담당자 / 구간 검색..." oninput="renderHistoryList()" style="flex:1; min-width:160px;">
+        <select id="histFilterManager" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
+            <option value="">담당자 전체</option>
+        </select>
+        <select id="histFilterEra" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
+            <option value="">고시시기 전체</option>
+        </select>
     </div>
     <div id="historyList">
         <div class="hist-empty">저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.</div>
@@ -32559,8 +32565,10 @@ function runSearch(val) {
     });
     if (match) {
         currentItem = match;
-        // 직접 타이핑 매칭 시 카카오 선택이 아니므로 workAddr = 입력값, clientName = 없음
-        if (!window._currentWorkAddr || window._currentWorkAddr !== val) {
+        // 카카오 선택 직후면 workAddr 덮어쓰지 않음
+        if (window._kakaoJustSelected) {
+            window._kakaoJustSelected = false;
+        } else {
             window._currentWorkAddr = val;
             window._currentClientName = '';
         }
@@ -32712,6 +32720,7 @@ function selectKakaoSuggestion(idx) {
     window._currentWorkAddr = displayAddr;
     // 장소명이 있으면 화주명으로 자동저장 (주소만 있으면 빈값)
     window._currentClientName = (!item._isAddress && item.place_name) ? item.place_name : '';
+    window._kakaoJustSelected = true; // runSearch의 덮어쓰기 방지 플래그
 
     const listEl = document.getElementById('kakaoSuggestList');
     listEl.classList.remove('open');
@@ -34445,6 +34454,9 @@ function addToCart() {
         discount: discount,       // 쉐어율 (0이면 쉐어 없음)
         safe40: safe40,           // 안전운임 40ft
         safe20: safe20,           // 안전운임 20ft
+        isRoundFare: isRoundFare,
+        isRoundQuote: isRoundQuote,
+        isRoundDetail: isRoundDetail,
     };
 
     cartItems.push(item);
@@ -34784,19 +34796,21 @@ async function downloadCartExcel() {
     let rowIdx = 5, no = 1;
     cartItems.forEach(it => {
         const surch = it.hasSurcharge && it.surchargeText ? it.surchargeText : '-';
-        [['20FT', it.q20], ['40FT', it.q40]].forEach(([ft, q]) => {
+        [['20FT', it.q20, it.safe20], ['40FT', it.q40, it.safe40]].forEach(([ft, q, safe]) => {
             const bg = (no % 2 === 0) ? lightBg : white;
             const r = ws.getRow(rowIdx);
-            r.height = 18;
-            [[1,no,C],[2,it.origin,C],[3,(it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-'),C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,q,C]].forEach(([col,val,align]) => {
+            r.height = it.discount > 0 ? 28 : 18;
+            const waVal = (it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-');
+            const qVal = it.discount > 0 ? `청구 ${q.toLocaleString()}원\n안전 ${safe.toLocaleString()}원` : q;
+            [[1,no,C],[2,it.origin,C],[3,waVal,C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,qVal,C]].forEach(([col,val,align]) => {
                 const cell = r.getCell(col);
                 cell.value = val;
                 cell.style = {
                     font: { name: '맑은 고딕', size: 10, color: col===2?blue:col===4?teal:col===8?navy:{argb:'FF1E293B'}, bold: col===8 },
                     fill: { type: 'pattern', pattern: 'solid', fgColor: bg },
-                    alignment: { horizontal: align, vertical: M, wrapText: col===3 },
+                    alignment: { horizontal: align, vertical: M, wrapText: col===3||col===8 },
                     border: ab,
-                    numFmt: col===8 ? '#,##0' : undefined
+                    numFmt: (col===8 && it.discount===0) ? '#,##0' : undefined
                 };
             });
             rowIdx++; no++;
@@ -34829,11 +34843,19 @@ async function downloadCartExcel() {
             const amt = q - base;
             let detail;
             if (!it.hasSurcharge || amt <= 0) {
-                detail = `할증 없음 — ${q.toLocaleString()}원`;
+                const safeD0 = ft==='20FT' ? (it.safe20||q) : (it.safe40||q);
+                detail = it.discount > 0
+                    ? `청구 ${q.toLocaleString()}원 / 안전 ${safeD0.toLocaleString()}원`
+                    : `할증 없음 — ${q.toLocaleString()}원`;
             } else {
                 const lines = (it.listForCopy40||'').split('\n').filter(l => l.trim().startsWith('▪'));
                 const bd2 = lines.map(l => { const m = l.match(/▪\s*(.+?):\s*([\d,]+)원/); return m?`${m[1]}: +${m[2]}원`:''; }).filter(Boolean).join('\n');
-                detail = `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원 = ${q.toLocaleString()}원\n${bd2}`;
+                const rPct = ft==='20FT' ? (it.r20||0) : (it.r40||0);
+                const safeD = ft==='20FT' ? (it.safe20||q) : (it.safe40||q);
+                const finalStr = it.discount > 0
+                    ? `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원(${rPct}%) = 청구 ${q.toLocaleString()}원 / 안전 ${safeD.toLocaleString()}원`
+                    : `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원(${rPct}%) = ${q.toLocaleString()}원`;
+                detail = `${finalStr}\n${bd2}`;
             }
             const lineCount = (detail.match(/\n/g)||[]).length + 1;
             const bg = (no % 2 === 0) ? lightBg : white;
@@ -34854,16 +34876,6 @@ async function downloadCartExcel() {
             rowIdx++; no++;
         });
     });
-
-    // ── 푸터
-    rowIdx++;
-    ws.mergeCells(`A${rowIdx}:H${rowIdx}`);
-    ws.getRow(rowIdx).height = 22;
-    const footer = ws.getCell(`A${rowIdx}`);
-    footer.value = '당사와의 소중한 거래에 감사드리며, 신속하고 안전한 운송 서비스로 최선을 다하겠습니다.\n\n주식회사 경평물류';
-    footer.style.alignment = Object.assign({}, footer.style.alignment || {}, { wrapText: true });
-    footer.style = { font: { name: '맑은 고딕', size: 10, bold: true, color: navy }, fill: { type: 'pattern', pattern: 'solid', fgColor: {argb:'FFF0F9FF'} }, alignment: { horizontal: C, vertical: M } };
-
 
     // ── 안내사항
     rowIdx++;
@@ -34900,6 +34912,14 @@ async function downloadCartExcel() {
         };
         rowIdx++;
     });
+
+    // ── 인사말 (맨 아래)
+    rowIdx++;
+    ws.mergeCells(`A${rowIdx}:H${rowIdx}`);
+    ws.getRow(rowIdx).height = 30;
+    const footer = ws.getCell(`A${rowIdx}`);
+    footer.value = '당사와의 소중한 거래에 감사드리며, 신속하고 안전한 운송 서비스로 최선을 다하겠습니다.\n주식회사 경평물류';
+    footer.style = { font: { name: '맑은 고딕', size: 10, bold: true, color: navy }, fill: { type: 'pattern', pattern: 'solid', fgColor: {argb:'FFF0F9FF'} }, alignment: { horizontal: C, vertical: M, wrapText: true } };
 
         const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -35092,11 +35112,20 @@ function openSaveHistModal(cartSnapshot) {
     const badgesEl = document.getElementById('histCondBadges');
     if (badgesEl) {
         const first = items[0];
+        const isRoundFare = first.isRoundFare || false;
+        const isRoundQuote = first.isRoundQuote || false;
+        const isRoundDetail = first.isRoundDetail || false;
         const badges = [];
         if (first.eraLabel) badges.push(`<span style="background:#dbeafe;color:#1e3a8a;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${first.eraLabel}</span>`);
         if (first.surchargeText) badges.push(`<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">할증: ${first.surchargeText}</span>`);
         if (first.discount > 0) badges.push(`<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">쉐어 ${Math.round(first.discount*100)}%</span>`);
         if (first.isMultiSurcharge) badges.push(`<span style="background:#fce7f3;color:#9d174d;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">다중할증</span>`);
+        const roundParts = [
+            isRoundFare ? '고시사사오입' : '',
+            isRoundQuote ? '견적사사오입' : '',
+            isRoundDetail ? '상세사사오입' : '',
+        ].filter(Boolean).join('+');
+        if (roundParts) badges.push(`<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${roundParts}</span>`);
         badgesEl.innerHTML = badges.join('');
     }
 
@@ -35167,41 +35196,93 @@ function sendToGoogleSheet(record) {
 function renderHistoryList() {
     const hist = getHistoryData();
     const q = (document.getElementById('histSearch')?.value||'').trim().toLowerCase();
-    const filtered = q ? hist.filter(h => h.company.toLowerCase().includes(q)||(h.manager||'').toLowerCase().includes(q)) : hist;
+    const fManager = (document.getElementById('histFilterManager')?.value||'');
+    const fEra = (document.getElementById('histFilterEra')?.value||'');
+
+    // 필터 드롭다운 옵션 동적 생성
+    const managers = [...new Set(hist.map(h => h.manager||'').filter(Boolean))];
+    const eras = [...new Set(hist.map(h => h.items?.[0]?.eraLabel||h.eraLabel||'').filter(Boolean))];
+    const mSel = document.getElementById('histFilterManager');
+    const eSel = document.getElementById('histFilterEra');
+    if (mSel) {
+        const cur = mSel.value;
+        mSel.innerHTML = '<option value="">담당자 전체</option>' + managers.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+    }
+    if (eSel) {
+        const cur = eSel.value;
+        eSel.innerHTML = '<option value="">고시시기 전체</option>' + eras.map(e=>`<option value="${e}"${e===cur?' selected':''}>${e}</option>`).join('');
+    }
+
+    const filtered = hist.filter(h => {
+        const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||'';
+        if (q && !h.company.toLowerCase().includes(q) && !(h.manager||'').toLowerCase().includes(q) && !h.items?.some(it=>(it.origin+it.dest+it.dist).toLowerCase().includes(q))) return false;
+        if (fManager && (h.manager||'') !== fManager) return false;
+        if (fEra && eraLabel !== fEra) return false;
+        return true;
+    });
+
     const el = document.getElementById('historyList');
     if (!filtered.length) {
-        el.innerHTML = `<div class="hist-empty">${q?'검색 결과가 없습니다.':'저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.'}</div>`;
+        el.innerHTML = `<div class="hist-empty">${(q||fManager||fEra)?'검색 결과가 없습니다.':'저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.'}</div>`;
         return;
     }
-    el.innerHTML = filtered.map(h => {
-        const routes = h.items.map((it,i) => {
-            const client = it.clientName ? ` [${it.clientName}]` : '';
-            return `${i+1}. ${it.origin} → ${it.dest}${client} (${it.dist}km)`;
+
+    const rows = filtered.map(h => {
+        const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||h.condStr||'';
+        const surchargeText = h.items?.[0]?.surchargeText||'';
+        const discount = h.items?.[0]?.discount||0;
+        const isRoundFare = h.items?.[0]?.isRoundFare||false;
+        const isRoundQuote = h.items?.[0]?.isRoundQuote||false;
+        const isRoundDetail = h.items?.[0]?.isRoundDetail||false;
+        const roundLabel = [isRoundFare?'고시사사오입':'',isRoundQuote?'견적사사오입':'',isRoundDetail?'상세사사오입':''].filter(Boolean).join('+');
+        const badges = [
+            eraLabel?`<span class="hist-cond-badge era">${eraLabel}</span>`:'',
+            surchargeText?`<span class="hist-cond-badge rate">${surchargeText}</span>`:'',
+            discount>0?`<span class="hist-cond-badge rate">쉐어 ${Math.round(discount*100)}%</span>`:'',
+            roundLabel?`<span class="hist-cond-badge round">${roundLabel}</span>`:'',
+        ].filter(Boolean).join(' ');
+
+        const routeStr = h.items.map((it,i)=>{
+            const c = it.clientName?`<br><span style="font-size:0.72rem;color:#64748b;">${it.clientName}</span>`:'';
+            return `${i+1}. ${it.origin} → ${it.dest}${c}`;
         }).join('<br>');
-        // 조건배지: eraLabel은 items[0]에, 구버전은 h.eraLabel
-        const eraLabel = h.items?.[0]?.eraLabel || h.eraLabel || h.condStr || '';
-        const surchargeText = h.items?.[0]?.surchargeText || '';
-        const discount = h.items?.[0]?.discount || 0;
-        const condBadges = [
-            eraLabel ? `<span class="hist-cond-badge era">${eraLabel}</span>` : '',
-            surchargeText ? `<span class="hist-cond-badge rate">${surchargeText}</span>` : '',
-            discount > 0 ? `<span class="hist-cond-badge rate">쉐어 ${Math.round(discount*100)}%</span>` : '',
-            h.note ? `<span class="hist-cond-badge rate">📌 ${h.note}</span>` : '',
-        ].filter(Boolean).join('');
-        return `<div class="hist-card">
-            <div class="hist-card-top">
-                <div class="hist-card-company">📋 ${h.company}${h.manager?` · ${h.manager}`:''}</div>
-                <div class="hist-card-date">${h.date}</div>
-            </div>
-            <div class="hist-card-routes">${routes}</div>
-            <div class="hist-card-cond">${condBadges}</div>
-            <div class="hist-card-actions">
-                <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">🔍 상세보기</button>
-                <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">🔄 재견적</button>
+
+        const totalQ40 = h.items.reduce((s,it)=>s+(it.q40||0),0);
+        const amtCell = discount>0
+            ? `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span><br><span style="font-size:0.72rem;color:#94a3b8;">안전 ${h.items.reduce((s,it)=>s+(it.safe40||0),0).toLocaleString()}원</span>`
+            : `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span>`;
+
+        return `<tr>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;font-size:0.78rem;color:#64748b;">${h.date}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">${h.manager||'-'}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${h.company}<br>${h.note?`<span style="font-size:0.72rem;color:#94a3b8;">📌 ${h.note}</span>`:''}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;font-size:0.82rem;">${routeStr}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${badges}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;text-align:right;">${amtCell}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">
+                <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">상세</button>
+                <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">재견적</button>
                 <button class="hist-btn hist-btn-del" onclick="deleteHist(${h.id})">🗑️</button>
-            </div>
-        </div>`;
+            </td>
+        </tr>`;
     }).join('');
+
+    el.innerHTML = `<div style="overflow-x:auto; border:0.5px solid #e2e8f0; border-radius:10px;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            <thead>
+                <tr style="background:#f8fafc;">
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">일시</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">담당자</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">수신처</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">구간</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">조건</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:right;color:#475569;font-weight:600;">견적금액(40ft)</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;"></th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </div>`;
 }
 
 function deleteHist(id) {
