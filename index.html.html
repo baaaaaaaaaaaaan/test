@@ -97,8 +97,8 @@
 
         .kakao-suggest-list { display: none; position: absolute; top: 100%; left: 0; width: 100%;
             background: white; border: 2px solid #94a3b8; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            z-index: 1100; max-height: 260px; overflow-y: auto; margin-top: 4px; box-sizing: border-box; }
-        .kakao-suggest-list.open { display: block; }
+            z-index: 1100; max-height: 260px; overflow-y: auto; margin-top: 4px; box-sizing: border-box; pointer-events: none; }
+        .kakao-suggest-list.open { display: block; pointer-events: auto; }
         .kakao-suggest-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .kakao-suggest-item:last-child { border-bottom: none; }
         .kakao-suggest-item:hover { background: #f1f5f9; }
@@ -437,7 +437,7 @@
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h3 style="margin:0;">📊 경평물류 안전운임 조회</h3>
-        <div class="cart-badge">
+        <div class="cart-badge" style="position:relative; z-index:1200;">
             <button onclick="openCartModal()" style="background:#166534; color:white; border:none; border-radius:8px; padding:7px 14px; font-size:0.82rem; font-weight:700; cursor:pointer;">🛒 견적 카트</button>
             <span id="cartBadge" class="cart-count" style="display:none;">0</span>
         </div>
@@ -735,9 +735,14 @@
 
 <!-- 견적 이력 페이지 -->
 <div id="page-history" class="main-page">
-    <div class="hist-toolbar">
-        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 검색..." oninput="renderHistoryList()">
-        <button onclick="openSaveHistModal()" style="padding:8px 16px; background:#1e3a8a; color:white; border:none; border-radius:8px; font-size:0.82rem; font-weight:700; cursor:pointer; white-space:nowrap;">📝 이력 남기기</button>
+    <div class="hist-toolbar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+        <input type="text" class="hist-search" id="histSearch" placeholder="🔍 화주명 / 담당자 / 구간 검색..." oninput="renderHistoryList()" style="flex:1; min-width:160px;">
+        <select id="histFilterManager" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
+            <option value="">담당자 전체</option>
+        </select>
+        <select id="histFilterEra" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
+            <option value="">고시시기 전체</option>
+        </select>
     </div>
     <div id="historyList">
         <div class="hist-empty">저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.</div>
@@ -754,21 +759,22 @@
             <button onclick="closeSaveHistModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#64748b;">✕</button>
         </div>
         <div class="save-hist-body">
+            <div id="histCondBadges" style="margin-bottom:10px; display:flex; flex-wrap:wrap; gap:6px;"></div>
             <div class="save-hist-field">
-                <label>화주명 (수신처) *</label>
-                <input type="text" id="histCompany" placeholder="예: (주)ABC물류, 홍길동 화주">
+                <label>담당자 (견적 작성자) *</label>
+                <input type="text" id="histManager" placeholder="예: 홍길동 대리">
             </div>
             <div class="save-hist-field">
-                <label>담당자 (견적 작성자)</label>
-                <input type="text" id="histManager" placeholder="예: 김경평">
+                <label>수신처 (포딩사/화주) *</label>
+                <input type="text" id="histCompany" placeholder="예: 삼성물산, (주)ABC포딩">
             </div>
             <div class="save-hist-field">
                 <label>비고</label>
-                <input type="text" id="histNote" placeholder="예: 2024년 계약 갱신 검토">
+                <input type="text" id="histNote" placeholder="예: 계약 갱신 검토">
             </div>
-            <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; font-size:0.78rem; color:#64748b;">
-                <div style="font-weight:700; color:#475569; margin-bottom:4px;">📦 저장될 견적 내용</div>
-                <div id="histPreviewSummary">—</div>
+            <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; font-size:0.82rem; color:#475569;">
+                <div style="font-weight:700; color:#1e3a8a; margin-bottom:8px;">📦 화주명 (건별 확인)</div>
+                <div id="histClientRows"></div>
             </div>
         </div>
         <div class="save-hist-footer">
@@ -32547,15 +32553,31 @@ function runSearch(val) {
     val = val.trim();
     if (val.length < 2) { 
         document.getElementById('resultBox').style.display = 'none';
-        currentItem = null; return; 
+        currentItem = null;
+        window._currentWorkAddr = '';
+        window._currentClientName = '';
+        return; 
     }
     const searchKeyword = val.replace(/\s+/g, '');
     const match = getDatabase()[currentType].find(item => {
         const fullAddress = `${item.s} ${item.g || ''} ${item.e}`.replace(/\s+/g, '');
         return fullAddress.includes(searchKeyword);
     });
-    if (match) { currentItem = match; calculateFare(); } 
-    else { document.getElementById('resultBox').style.display = 'none'; currentItem = null;
+    if (match) {
+        currentItem = match;
+        // 카카오 선택 직후면 workAddr 덮어쓰지 않음
+        if (window._kakaoJustSelected) {
+            window._kakaoJustSelected = false;
+        } else {
+            window._currentWorkAddr = val;
+            window._currentClientName = '';
+        }
+        calculateFare();
+    } else {
+        document.getElementById('resultBox').style.display = 'none';
+        currentItem = null;
+        window._currentWorkAddr = '';
+        window._currentClientName = '';
     }
 }
 
@@ -32668,6 +32690,9 @@ function onSearchInput(val) {
 }
 
 function renderKakaoSuggestions(items) {
+    // 현재 검색창이 비어있으면 렌더링 무시 (비동기 콜백이 늦게 도착한 경우)
+    const currentVal = (document.getElementById('mainSearchInput')?.value || '').trim();
+    if (currentVal.length < 2) return;
     const listEl = document.getElementById('kakaoSuggestList');
     listEl.innerHTML = items.map((item, idx) => {
         const addr = item.road_address_name || item.address_name || '';
@@ -32693,6 +32718,9 @@ function selectKakaoSuggestion(idx) {
     input.value = displayAddr;
     // 실작업지 주소 저장 (카트 담기 시 사용)
     window._currentWorkAddr = displayAddr;
+    // 장소명이 있으면 화주명으로 자동저장 (주소만 있으면 빈값)
+    window._currentClientName = (!item._isAddress && item.place_name) ? item.place_name : '';
+    window._kakaoJustSelected = true; // runSearch의 덮어쓰기 방지 플래그
 
     const listEl = document.getElementById('kakaoSuggestList');
     listEl.classList.remove('open');
@@ -32735,6 +32763,11 @@ function selectKakaoSuggestion(idx) {
 function applyMatchResult(matched) {
     if (matched) {
         currentItem = matched;
+        // _currentWorkAddr가 아직 세팅 안 됐으면 검색창 현재값으로 세팅
+        if (!window._currentWorkAddr) {
+            const inputVal = (document.getElementById('mainSearchInput')?.value || '').trim();
+            window._currentWorkAddr = inputVal;
+        }
         calculateFare();
         showKakaoMatchNotice(true);
     } else {
@@ -33153,6 +33186,17 @@ function calculateFare() {
     lastResult.r40 = Math.round(res40.total * 100);
     lastResult.r20 = Math.round(res20.total * 100);
     lastResult.surchargeItems = res40.items || [];
+    // 안전운임 = 원본 고시운임(p40s/p20s) 기준 할증 적용값 (쉐어율 적용 전)
+    const safeBase40 = isRoundFare ? round1000(currentItem.p40s) : currentItem.p40s;
+    const safeBase20 = isRoundFare ? round1000(currentItem.p20s) : currentItem.p20s;
+    const safeDetail40 = calcDetailItems(safeBase40, res40.items, roundFn40);
+    const safeDetail20 = calcDetailItems(safeBase20, res20.items, roundFn20);
+    let safe40 = safeBase40 + safeDetail40.totalAmt;
+    let safe20 = safeBase20 + safeDetail20.totalAmt;
+    if (isRoundQuote) { safe40 = round1000(safe40); safe20 = round1000(safe20); }
+    else { safe40 = Math.round(safe40); safe20 = Math.round(safe20); }
+    lastResult.safe40 = safe40;
+    lastResult.safe20 = safe20;
 
     const textDetail40 = uiDetails40.join('<br>') || '선택된 할증 없음';
     const textDetail20 = uiDetails20.join('<br>') || '선택된 할증 없음';
@@ -33235,13 +33279,26 @@ function copyQuoteText(ft) {
     const isOneWay = currentType.startsWith('ow') ? '편도' : '왕복';
     const originName = document.getElementById('selectedText').innerText;
     const hasSurcharge = lastResult.hasSurcharge;
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
 
     function fareBlock(ftType) {
         const base = ftType === '20' ? lastResult.base20 : lastResult.base40;
         const q    = ftType === '20' ? lastResult.q20 : lastResult.q40;
-        const amt  = q - base; // 항상 최종-기본으로 계산해서 base+amt=q 보장
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        const amt  = q - base;
+        if (discount > 0) {
+            const safe = ftType === '20' ? lastResult.safe20 : lastResult.safe40;
+            const rPct2 = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            if (hasSurcharge && amt > 0) {
+                const safeAmt = safe - (safe - amt > 0 ? safe - amt : 0);
+                const safeBase2 = safe - amt;
+                return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct2}%) = 청구운임 ${q.toLocaleString()}원\n${ftType}FT │ 안전운임 ${safe.toLocaleString()}원`;
+            }
+            return `${ftType}FT │ 청구운임 ${q.toLocaleString()}원\n${ftType}FT │ 안전운임 ${safe.toLocaleString()}원`;
+        }
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -33339,8 +33396,10 @@ function copyCarrierFareText(ft) {
         const base = ftType === '20' ? base20 : base40;
         const q    = ftType === '20' ? carrier20 : carrier40;
         const amt  = q - base;  // 운수사는 base/q 모두 동일 기준이라 차이로 계산
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34057,6 +34116,17 @@ function calculateFare() {
     lastResult.r40 = Math.round(res40.total * 100);
     lastResult.r20 = Math.round(res20.total * 100);
     lastResult.surchargeItems = res40.items || [];
+    // 안전운임 = 원본 고시운임(p40s/p20s) 기준 할증 적용값 (쉐어율 적용 전)
+    const safeBase40 = isRoundFare ? round1000(currentItem.p40s) : currentItem.p40s;
+    const safeBase20 = isRoundFare ? round1000(currentItem.p20s) : currentItem.p20s;
+    const safeDetail40 = calcDetailItems(safeBase40, res40.items, roundFn40);
+    const safeDetail20 = calcDetailItems(safeBase20, res20.items, roundFn20);
+    let safe40 = safeBase40 + safeDetail40.totalAmt;
+    let safe20 = safeBase20 + safeDetail20.totalAmt;
+    if (isRoundQuote) { safe40 = round1000(safe40); safe20 = round1000(safe20); }
+    else { safe40 = Math.round(safe40); safe20 = Math.round(safe20); }
+    lastResult.safe40 = safe40;
+    lastResult.safe20 = safe20;
 
     const textDetail40 = uiDetails40.join('<br>') || '선택된 할증 없음';
     const textDetail20 = uiDetails20.join('<br>') || '선택된 할증 없음';
@@ -34139,13 +34209,26 @@ function copyQuoteText(ft) {
     const isOneWay = currentType.startsWith('ow') ? '편도' : '왕복';
     const originName = document.getElementById('selectedText').innerText;
     const hasSurcharge = lastResult.hasSurcharge;
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
 
     function fareBlock(ftType) {
         const base = ftType === '20' ? lastResult.base20 : lastResult.base40;
         const q    = ftType === '20' ? lastResult.q20 : lastResult.q40;
-        const amt  = q - base; // 항상 최종-기본으로 계산해서 base+amt=q 보장
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        const amt  = q - base;
+        if (discount > 0) {
+            const safe = ftType === '20' ? lastResult.safe20 : lastResult.safe40;
+            const rPct2 = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            if (hasSurcharge && amt > 0) {
+                const safeAmt = safe - (safe - amt > 0 ? safe - amt : 0);
+                const safeBase2 = safe - amt;
+                return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct2}%) = 청구운임 ${q.toLocaleString()}원\n${ftType}FT │ 안전운임 ${safe.toLocaleString()}원`;
+            }
+            return `${ftType}FT │ 청구운임 ${q.toLocaleString()}원\n${ftType}FT │ 안전운임 ${safe.toLocaleString()}원`;
+        }
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34243,8 +34326,10 @@ function copyCarrierFareText(ft) {
         const base = ftType === '20' ? base20 : base40;
         const q    = ftType === '20' ? carrier20 : carrier40;
         const amt  = q - base;  // 운수사는 base/q 모두 동일 기준이라 차이로 계산
-        if (hasSurcharge && amt > 0)
-            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()} = ${q.toLocaleString()}원`;
+        if (hasSurcharge && amt > 0) {
+            const rPct = ftType === '20' ? lastResult.r20 : lastResult.r40;
+            return `${ftType}FT │ 기본 ${base.toLocaleString()} + 할증 ${amt.toLocaleString()}(${rPct}%) = ${q.toLocaleString()}원`;
+        }
         return `${ftType}FT │ ${q.toLocaleString()} 원`;
     }
 
@@ -34337,11 +34422,17 @@ function addToCart() {
         }).filter(Boolean).join(', ');
     }
 
+    const discount = (parseFloat(document.getElementById('marginDiscount').value) || 0) / 100;
+    // 안전운임 (쉐어율 적용 전 원본 고시운임 + 할증)
+    const safe40 = discount > 0 ? (lastResult.safe40 || Math.round(lastResult.q40 / (1 - discount))) : lastResult.q40;
+    const safe20 = discount > 0 ? (lastResult.safe20 || Math.round(lastResult.q20 / (1 - discount))) : lastResult.q20;
+
     // 복사 내용과 동일한 데이터 구조 저장
     const item = {
         id: Date.now(),
         origin: originName,
-        workAddr: window._currentWorkAddr || '',  // 실작업지 주소
+        workAddr: window._currentWorkAddr || '',    // 실작업지 주소
+        clientName: window._currentClientName || '', // 화주명 (장소명 있을때 자동)
         dest: fullAddr,
         dist: currentItem.d,
         isOneWay,
@@ -34360,6 +34451,12 @@ function addToCart() {
         surchargeItems: lastResult.surchargeItems || [],
         r40: lastResult.r40,
         r20: lastResult.r20,
+        discount: discount,       // 쉐어율 (0이면 쉐어 없음)
+        safe40: safe40,           // 안전운임 40ft
+        safe20: safe20,           // 안전운임 20ft
+        isRoundFare: isRoundFare,
+        isRoundQuote: isRoundQuote,
+        isRoundDetail: isRoundDetail,
     };
 
     cartItems.push(item);
@@ -34425,12 +34522,14 @@ function renderCartList() {
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
             <div style="background:#f8fafc; border-radius:6px; padding:7px 10px; text-align:center;">
-                <div style="font-size:0.7rem; color:#64748b;">20FT 견적가</div>
+                <div style="font-size:0.7rem; color:#64748b;">20FT ${it.discount > 0 ? '청구운임' : '견적가'}</div>
                 <div style="font-size:0.88rem; font-weight:700; color:#1e293b;">${it.q20.toLocaleString()}원</div>
+                ${it.discount > 0 ? `<div style="font-size:0.65rem;color:#94a3b8;margin-top:1px;">안전운임 ${it.safe20.toLocaleString()}원</div>` : ''}
             </div>
             <div style="background:#f8fafc; border-radius:6px; padding:7px 10px; text-align:center;">
-                <div style="font-size:0.7rem; color:#64748b;">40FT 견적가</div>
+                <div style="font-size:0.7rem; color:#64748b;">40FT ${it.discount > 0 ? '청구운임' : '견적가'}</div>
                 <div style="font-size:0.88rem; font-weight:700; color:#1e293b;">${it.q40.toLocaleString()}원</div>
+                ${it.discount > 0 ? `<div style="font-size:0.65rem;color:#94a3b8;margin-top:1px;">안전운임 ${it.safe40.toLocaleString()}원</div>` : ''}
             </div>
         </div>
         ${it.hasSurcharge && it.surchargeText ? `<div style="font-size:0.72rem;color:#64748b;margin-top:5px;">할증: ${it.surchargeText}</div>` : ''}
@@ -34453,30 +34552,51 @@ function downloadCartPDF() {
     function buildCard() {
         const rows = cartItems.map((it, idx) => {
             const surchShort = it.hasSurcharge && it.surchargeText ? it.surchargeText : '-';
-            const wa = it.workAddr || '-';
+            const waName = it.clientName || '';
+            const waAddr = it.workAddr || '';
+            const wa = waName && waAddr
+                ? `<strong>${waName}</strong><br><span style="font-size:9px;color:#475569;font-weight:400;">${waAddr}</span>`
+                : waName ? `<strong>${waName}</strong>`
+                : waAddr ? waAddr : '-';
+            const amt20cell = it.discount > 0
+                ? `<span style="font-size:9px;color:#64748b;">안전운임 ${it.safe20.toLocaleString()}원</span><br><span style="font-weight:700;color:#1e293b;">청구운임 ${it.q20.toLocaleString()}원</span>`
+                : `${it.q20.toLocaleString()}원`;
+            const amt40cell = it.discount > 0
+                ? `<span style="font-size:9px;color:#64748b;">안전운임 ${it.safe40.toLocaleString()}원</span><br><span style="font-weight:700;color:#1e293b;">청구운임 ${it.q40.toLocaleString()}원</span>`
+                : `${it.q40.toLocaleString()}원`;
             return `
-            <tr><td class="no">${idx*2+1}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">20FT</td><td class="ctr">${surchShort}</td><td class="amt">${it.q20.toLocaleString()}원</td></tr>
-            <tr><td class="no">${idx*2+2}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">40FT</td><td class="ctr">${surchShort}</td><td class="amt">${it.q40.toLocaleString()}원</td></tr>`;
+            <tr><td class="no">${idx*2+1}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">20FT</td><td class="ctr">${surchShort}</td><td class="amt">${amt20cell}</td></tr>
+            <tr><td class="no">${idx*2+2}</td><td class="org">${it.origin}</td><td class="dest">${wa}</td><td class="dest">${it.dest}</td><td class="ctr">${it.dist}km</td><td class="ctr">40FT</td><td class="ctr">${surchShort}</td><td class="amt">${amt40cell}</td></tr>`;
         }).join('');
 
         const details = cartItems.map((it, idx) => {
             const buildDetail = (ft, base, q) => {
                 const amt = q - base;
+                const disc = it.discount || 0;
                 if (!it.hasSurcharge || amt <= 0) {
+                    if (disc > 0) {
+                        const safeQ = ft === '20FT' ? (it.safe20||Math.round(q/(1-disc))) : (it.safe40||Math.round(q/(1-disc)));
+                        return `<div class="dt-none"><span style="color:#94a3b8;font-size:9px;">안전운임 ${safeQ.toLocaleString()}원</span> → 청구운임 ${q.toLocaleString()}원</div>`;
+                    }
                     return `<div class="dt-none">할증 없음 — ${q.toLocaleString()}원</div>`;
                 }
-                const lines = it.listForCopy40.split('\n').filter(l => l.trim().startsWith('▪'));
+                const listSrc = ft === '20FT' ? (it.listForCopy20||it.listForCopy40) : it.listForCopy40;
+                const lines = (listSrc||'').split('\n').filter(l => l.trim().startsWith('▪'));
                 const breakdown = lines.map(l => {
                     const m = l.match(/▪\s*(.+?):\s*([\d,]+)원/);
                     return m ? `<span>• ${m[1]}: +${m[2]}원</span>` : '';
                 }).filter(Boolean).join('');
+                const safeQ2 = ft === '20FT' ? (it.safe20||Math.round(q/(1-disc))) : (it.safe40||Math.round(q/(1-disc)));
+                const finalLabel = disc > 0
+                    ? `<span class="dt-final">${q.toLocaleString()}원</span><span style="font-size:9px;color:#94a3b8;margin-left:4px;">(안전운임 ${safeQ2.toLocaleString()}원)</span>`
+                    : `<span class="dt-final">${q.toLocaleString()}원</span>`;
                 return `
                 <div class="dt-row">
                     <span class="dt-base">기본 ${base.toLocaleString()}원</span>
                     <span class="dt-plus">+</span>
                     <span class="dt-surch">할증 ${amt.toLocaleString()}원</span>
                     <span class="dt-eq">=</span>
-                    <span class="dt-final">${q.toLocaleString()}원</span>
+                    ${finalLabel}
                 </div>
                 ${breakdown ? `<div class="dt-breakdown">${breakdown}</div>` : ''}`;
             };
@@ -34676,19 +34796,21 @@ async function downloadCartExcel() {
     let rowIdx = 5, no = 1;
     cartItems.forEach(it => {
         const surch = it.hasSurcharge && it.surchargeText ? it.surchargeText : '-';
-        [['20FT', it.q20], ['40FT', it.q40]].forEach(([ft, q]) => {
+        [['20FT', it.q20, it.safe20], ['40FT', it.q40, it.safe40]].forEach(([ft, q, safe]) => {
             const bg = (no % 2 === 0) ? lightBg : white;
             const r = ws.getRow(rowIdx);
-            r.height = 18;
-            [[1,no,C],[2,it.origin,C],[3,it.workAddr||'-',C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,q,C]].forEach(([col,val,align]) => {
+            r.height = it.discount > 0 ? 28 : 18;
+            const waVal = (it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-');
+            const qVal = it.discount > 0 ? `청구 ${q.toLocaleString()}원\n안전 ${safe.toLocaleString()}원` : q;
+            [[1,no,C],[2,it.origin,C],[3,waVal,C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,surch,C],[8,qVal,C]].forEach(([col,val,align]) => {
                 const cell = r.getCell(col);
                 cell.value = val;
                 cell.style = {
                     font: { name: '맑은 고딕', size: 10, color: col===2?blue:col===4?teal:col===8?navy:{argb:'FF1E293B'}, bold: col===8 },
                     fill: { type: 'pattern', pattern: 'solid', fgColor: bg },
-                    alignment: { horizontal: align, vertical: M },
+                    alignment: { horizontal: align, vertical: M, wrapText: col===3||col===8 },
                     border: ab,
-                    numFmt: col===8 ? '#,##0' : undefined
+                    numFmt: (col===8 && it.discount===0) ? '#,##0' : undefined
                 };
             });
             rowIdx++; no++;
@@ -34721,24 +34843,32 @@ async function downloadCartExcel() {
             const amt = q - base;
             let detail;
             if (!it.hasSurcharge || amt <= 0) {
-                detail = `할증 없음 — ${q.toLocaleString()}원`;
+                const safeD0 = ft==='20FT' ? (it.safe20||q) : (it.safe40||q);
+                detail = it.discount > 0
+                    ? `청구 ${q.toLocaleString()}원 / 안전 ${safeD0.toLocaleString()}원`
+                    : `할증 없음 — ${q.toLocaleString()}원`;
             } else {
                 const lines = (it.listForCopy40||'').split('\n').filter(l => l.trim().startsWith('▪'));
                 const bd2 = lines.map(l => { const m = l.match(/▪\s*(.+?):\s*([\d,]+)원/); return m?`${m[1]}: +${m[2]}원`:''; }).filter(Boolean).join('\n');
-                detail = `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원 = ${q.toLocaleString()}원\n${bd2}`;
+                const rPct = ft==='20FT' ? (it.r20||0) : (it.r40||0);
+                const safeD = ft==='20FT' ? (it.safe20||q) : (it.safe40||q);
+                const finalStr = it.discount > 0
+                    ? `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원(${rPct}%) = 청구 ${q.toLocaleString()}원 / 안전 ${safeD.toLocaleString()}원`
+                    : `기본 ${base.toLocaleString()}원 + 할증 ${amt.toLocaleString()}원(${rPct}%) = ${q.toLocaleString()}원`;
+                detail = `${finalStr}\n${bd2}`;
             }
             const lineCount = (detail.match(/\n/g)||[]).length + 1;
             const bg = (no % 2 === 0) ? lightBg : white;
             const r = ws.getRow(rowIdx);
             r.height = Math.max(20, lineCount * 16);
-            [[1,no,C],[2,it.origin,C],[3,it.workAddr||'-',C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,detail,C],[8,q,C]].forEach(([col,val,align]) => {
+            [[1,no,C],[2,it.origin,C],[3,(it.clientName&&it.workAddr)?it.clientName+'\n'+it.workAddr:(it.clientName||it.workAddr||'-'),C],[4,it.dest,C],[5,it.dist+'km',C],[6,ft,C],[7,detail,C],[8,q,C]].forEach(([col,val,align]) => {
                 const cell = r.getCell(col);
                 cell.value = val;
                 const isSurch = col===7 && it.hasSurcharge;
                 cell.style = {
                     font: { name: '맑은 고딕', size: 9.5, color: col===2?blue:col===4?teal:isSurch?orangeTxt:{argb:'FF1E293B'}, bold: col===8 },
                     fill: { type: 'pattern', pattern: 'solid', fgColor: isSurch?orange:bg },
-                    alignment: { horizontal: align, vertical: M, wrapText: col===7 },
+                    alignment: { horizontal: align, wrapText: col===3||col===7, vertical: M, wrapText: col===7 },
                     border: ab,
                     numFmt: col===8 ? '#,##0' : undefined
                 };
@@ -34746,16 +34876,6 @@ async function downloadCartExcel() {
             rowIdx++; no++;
         });
     });
-
-    // ── 푸터
-    rowIdx++;
-    ws.mergeCells(`A${rowIdx}:H${rowIdx}`);
-    ws.getRow(rowIdx).height = 22;
-    const footer = ws.getCell(`A${rowIdx}`);
-    footer.value = '당사와의 소중한 거래에 감사드리며, 신속하고 안전한 운송 서비스로 최선을 다하겠습니다.\n\n주식회사 경평물류';
-    footer.style.alignment = Object.assign({}, footer.style.alignment || {}, { wrapText: true });
-    footer.style = { font: { name: '맑은 고딕', size: 10, bold: true, color: navy }, fill: { type: 'pattern', pattern: 'solid', fgColor: {argb:'FFF0F9FF'} }, alignment: { horizontal: C, vertical: M } };
-
 
     // ── 안내사항
     rowIdx++;
@@ -34792,6 +34912,14 @@ async function downloadCartExcel() {
         };
         rowIdx++;
     });
+
+    // ── 인사말 (맨 아래)
+    rowIdx++;
+    ws.mergeCells(`A${rowIdx}:H${rowIdx}`);
+    ws.getRow(rowIdx).height = 30;
+    const footer = ws.getCell(`A${rowIdx}`);
+    footer.value = '당사와의 소중한 거래에 감사드리며, 신속하고 안전한 운송 서비스로 최선을 다하겠습니다.\n주식회사 경평물류';
+    footer.style = { font: { name: '맑은 고딕', size: 10, bold: true, color: navy }, fill: { type: 'pattern', pattern: 'solid', fgColor: {argb:'FFF0F9FF'} }, alignment: { horizontal: C, vertical: M, wrapText: true } };
 
         const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -34963,13 +35091,44 @@ function openSaveHistModal(cartSnapshot) {
     const items = cartSnapshot || cartItems;
     if (!items.length) { alert('견적 카트에 담긴 내용이 없습니다.'); return; }
     window._histCartSnapshot = items;
-    document.getElementById('histCompany').value = '';
     document.getElementById('histManager').value = '';
+    document.getElementById('histCompany').value = '';
     document.getElementById('histNote').value = '';
-    const summary = items.map((it, i) =>
-        `${i+1}. ${it.origin} → ${it.dest} (${it.dist}km) | 20FT: ${it.q20.toLocaleString()}원 / 40FT: ${it.q40.toLocaleString()}원`
-    ).join('<br>');
-    document.getElementById('histPreviewSummary').innerHTML = summary;
+
+    // 건별 화주명 입력 렌더링
+    const rowsEl = document.getElementById('histClientRows');
+    rowsEl.innerHTML = items.map((it, i) => {
+        const autoName = it.clientName || '';
+        const label = `${i+1}. ${it.origin} → ${it.dest}`;
+        return `<div style="margin-bottom:8px;">
+            <div style="font-size:0.75rem; color:#64748b; margin-bottom:3px;">${label}</div>
+            <input type="text" id="histClient_${i}" value="${autoName}"
+                placeholder="화주명 입력"
+                style="width:100%; padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; outline:none; box-sizing:border-box;">
+        </div>`;
+    }).join('');
+
+    // 조건배지 렌더링
+    const badgesEl = document.getElementById('histCondBadges');
+    if (badgesEl) {
+        const first = items[0];
+        const isRoundFare = first.isRoundFare || false;
+        const isRoundQuote = first.isRoundQuote || false;
+        const isRoundDetail = first.isRoundDetail || false;
+        const badges = [];
+        if (first.eraLabel) badges.push(`<span style="background:#dbeafe;color:#1e3a8a;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${first.eraLabel}</span>`);
+        if (first.surchargeText) badges.push(`<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">할증: ${first.surchargeText}</span>`);
+        if (first.discount > 0) badges.push(`<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">쉐어 ${Math.round(first.discount*100)}%</span>`);
+        if (first.isMultiSurcharge) badges.push(`<span style="background:#fce7f3;color:#9d174d;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">다중할증</span>`);
+        const roundParts = [
+            isRoundFare ? '고시사사오입' : '',
+            isRoundQuote ? '견적사사오입' : '',
+            isRoundDetail ? '상세사사오입' : '',
+        ].filter(Boolean).join('+');
+        if (roundParts) badges.push(`<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">${roundParts}</span>`);
+        badgesEl.innerHTML = badges.join('');
+    }
+
     document.getElementById('saveHistModal').classList.add('open');
 }
 function closeSaveHistModal() {
@@ -34980,23 +35139,31 @@ function closeSaveHistOutside(e) {
 }
 
 function confirmSaveHist() {
+    const manager = document.getElementById('histManager').value.trim();
     const company = document.getElementById('histCompany').value.trim();
-    if (!company) { alert('화주명을 입력해주세요.'); return; }
+    if (!manager) { alert('담당자를 입력해주세요.'); return; }
+    if (!company) { alert('수신처를 입력해주세요.'); return; }
     const items = window._histCartSnapshot || cartItems;
+
+    // 건별 화주명 수집
+    const clientNames = items.map((_, i) => {
+        const el = document.getElementById(`histClient_${i}`);
+        return el ? el.value.trim() : '';
+    });
+
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} ${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
-    const eraLabel = items[0]?.eraLabel || '알 수 없음';
-    const condRound = '사사오입O';
+
     const record = {
         id: Date.now(),
         date: dateStr,
+        manager: manager,
         company: company,
-        manager: document.getElementById('histManager').value.trim(),
         note: document.getElementById('histNote').value.trim(),
-        eraLabel: eraLabel,
-        eraNum: 1,
-        items: items.map(it => ({...it})),
-        condStr: `${eraLabel} | ${condRound}`
+        items: items.map((it, i) => ({
+            ...it,
+            clientName: clientNames[i] || it.clientName || '',
+        })),
     };
     const hist = getHistoryData();
     hist.unshift(record);
@@ -35029,31 +35196,93 @@ function sendToGoogleSheet(record) {
 function renderHistoryList() {
     const hist = getHistoryData();
     const q = (document.getElementById('histSearch')?.value||'').trim().toLowerCase();
-    const filtered = q ? hist.filter(h => h.company.toLowerCase().includes(q)||(h.manager||'').toLowerCase().includes(q)) : hist;
+    const fManager = (document.getElementById('histFilterManager')?.value||'');
+    const fEra = (document.getElementById('histFilterEra')?.value||'');
+
+    // 필터 드롭다운 옵션 동적 생성
+    const managers = [...new Set(hist.map(h => h.manager||'').filter(Boolean))];
+    const eras = [...new Set(hist.map(h => h.items?.[0]?.eraLabel||h.eraLabel||'').filter(Boolean))];
+    const mSel = document.getElementById('histFilterManager');
+    const eSel = document.getElementById('histFilterEra');
+    if (mSel) {
+        const cur = mSel.value;
+        mSel.innerHTML = '<option value="">담당자 전체</option>' + managers.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+    }
+    if (eSel) {
+        const cur = eSel.value;
+        eSel.innerHTML = '<option value="">고시시기 전체</option>' + eras.map(e=>`<option value="${e}"${e===cur?' selected':''}>${e}</option>`).join('');
+    }
+
+    const filtered = hist.filter(h => {
+        const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||'';
+        if (q && !h.company.toLowerCase().includes(q) && !(h.manager||'').toLowerCase().includes(q) && !h.items?.some(it=>(it.origin+it.dest+it.dist).toLowerCase().includes(q))) return false;
+        if (fManager && (h.manager||'') !== fManager) return false;
+        if (fEra && eraLabel !== fEra) return false;
+        return true;
+    });
+
     const el = document.getElementById('historyList');
     if (!filtered.length) {
-        el.innerHTML = `<div class="hist-empty">${q?'검색 결과가 없습니다.':'저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.'}</div>`;
+        el.innerHTML = `<div class="hist-empty">${(q||fManager||fEra)?'검색 결과가 없습니다.':'저장된 견적 이력이 없습니다.<br>견적 카트에서 이력을 남겨보세요.'}</div>`;
         return;
     }
-    el.innerHTML = filtered.map(h => {
-        const routes = h.items.map((it,i) => `${i+1}. ${it.origin} → ${it.dest} (${it.dist}km)`).join(' / ');
-        return `<div class="hist-card">
-            <div class="hist-card-top">
-                <div class="hist-card-company">🏢 ${h.company}${h.manager?` · ${h.manager}`:''}</div>
-                <div class="hist-card-date">${h.date}</div>
-            </div>
-            <div class="hist-card-routes">${routes}</div>
-            <div class="hist-card-cond">
-                <span class="hist-cond-badge era">${h.eraLabel||h.condStr||''}</span>
-                ${h.note?`<span class="hist-cond-badge rate">📌 ${h.note}</span>`:''}
-            </div>
-            <div class="hist-card-actions">
-                <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">🔍 상세보기</button>
-                <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">🔄 재견적</button>
+
+    const rows = filtered.map(h => {
+        const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||h.condStr||'';
+        const surchargeText = h.items?.[0]?.surchargeText||'';
+        const discount = h.items?.[0]?.discount||0;
+        const isRoundFare = h.items?.[0]?.isRoundFare||false;
+        const isRoundQuote = h.items?.[0]?.isRoundQuote||false;
+        const isRoundDetail = h.items?.[0]?.isRoundDetail||false;
+        const roundLabel = [isRoundFare?'고시사사오입':'',isRoundQuote?'견적사사오입':'',isRoundDetail?'상세사사오입':''].filter(Boolean).join('+');
+        const badges = [
+            eraLabel?`<span class="hist-cond-badge era">${eraLabel}</span>`:'',
+            surchargeText?`<span class="hist-cond-badge rate">${surchargeText}</span>`:'',
+            discount>0?`<span class="hist-cond-badge rate">쉐어 ${Math.round(discount*100)}%</span>`:'',
+            roundLabel?`<span class="hist-cond-badge round">${roundLabel}</span>`:'',
+        ].filter(Boolean).join(' ');
+
+        const routeStr = h.items.map((it,i)=>{
+            const c = it.clientName?`<br><span style="font-size:0.72rem;color:#64748b;">${it.clientName}</span>`:'';
+            return `${i+1}. ${it.origin} → ${it.dest}${c}`;
+        }).join('<br>');
+
+        const totalQ40 = h.items.reduce((s,it)=>s+(it.q40||0),0);
+        const amtCell = discount>0
+            ? `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span><br><span style="font-size:0.72rem;color:#94a3b8;">안전 ${h.items.reduce((s,it)=>s+(it.safe40||0),0).toLocaleString()}원</span>`
+            : `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span>`;
+
+        return `<tr>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;font-size:0.78rem;color:#64748b;">${h.date}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">${h.manager||'-'}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${h.company}<br>${h.note?`<span style="font-size:0.72rem;color:#94a3b8;">📌 ${h.note}</span>`:''}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;font-size:0.82rem;">${routeStr}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${badges}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;text-align:right;">${amtCell}</td>
+            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">
+                <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">상세</button>
+                <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">재견적</button>
                 <button class="hist-btn hist-btn-del" onclick="deleteHist(${h.id})">🗑️</button>
-            </div>
-        </div>`;
+            </td>
+        </tr>`;
     }).join('');
+
+    el.innerHTML = `<div style="overflow-x:auto; border:0.5px solid #e2e8f0; border-radius:10px;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            <thead>
+                <tr style="background:#f8fafc;">
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">일시</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">담당자</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">수신처</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">구간</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">조건</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:right;color:#475569;font-weight:600;">견적금액(40ft)</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;"></th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </div>`;
 }
 
 function deleteHist(id) {
@@ -35073,7 +35302,7 @@ function openPreviewFromHist(id) {
         <tr>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${i*2+1}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.origin}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.workAddr||'-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.clientName&&it.workAddr?it.clientName+'<br><span style="font-size:0.72rem;color:#64748b;">'+it.workAddr+'</span>':it.clientName||it.workAddr||'-'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.dest}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${it.dist}km</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">20FT</td>
@@ -35083,7 +35312,7 @@ function openPreviewFromHist(id) {
         <tr>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${i*2+2}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.origin}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.workAddr||'-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.clientName&&it.workAddr?it.clientName+'<br><span style="font-size:0.72rem;color:#64748b;">'+it.workAddr+'</span>':it.clientName||it.workAddr||'-'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;font-size:0.78rem;">${it.dest}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">${it.dist}km</td>
             <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:0.78rem;">40FT</td>
@@ -35218,17 +35447,7 @@ function saveRequoteAsNew() {
     alert('✅ 재견적 결과가 새 이력으로 저장되었습니다.');
 }
 
-// 카트 모달에 이력 남기기 버튼 추가 (동적)
-(function() {
-    const cartFooter = document.querySelector('#cartModal .cart-modal > div:last-child > div');
-    if (cartFooter) {
-        const btn = document.createElement('button');
-        btn.textContent = '📝 이력 남기기';
-        btn.style.cssText = 'flex:1; padding:12px; background:#7c3aed; color:white; border:none; border-radius:8px; font-weight:700; font-size:0.9rem; cursor:pointer;';
-        btn.onclick = () => openSaveHistModal();
-        cartFooter.appendChild(btn);
-    }
-})();
+// 카트 동적 버튼 제거됨 (HTML에 직접 포함)
 </script>
 </body>
 </html>
