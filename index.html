@@ -740,8 +740,17 @@
         <select id="histFilterManager" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
             <option value="">담당자 전체</option>
         </select>
+        <select id="histFilterOffice" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
+            <option value="">사무소 전체</option>
+            <option value="영업팀">영업팀</option>
+            <option value="평택본사운송팀">평택본사운송팀</option>
+            <option value="인천사무소">인천사무소</option>
+            <option value="의왕사무소">의왕사무소</option>
+            <option value="광양사무소">광양사무소</option>
+            <option value="부산사무소">부산사무소</option>
+        </select>
         <select id="histFilterEra" onchange="renderHistoryList()" style="padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:0.85rem; color:#1e293b; background:white; cursor:pointer;">
-            <option value="">고시시기 전체</option>
+            <option value="">기간 전체</option>
         </select>
     </div>
     <div id="historyList">
@@ -763,6 +772,18 @@
             <div class="save-hist-field">
                 <label>담당자 (견적 작성자) *</label>
                 <input type="text" id="histManager" placeholder="예: 홍길동 대리">
+            </div>
+            <div class="save-hist-field">
+                <label>사무소 *</label>
+                <select id="histOffice">
+                    <option value="">선택하세요</option>
+                    <option value="영업팀">영업팀</option>
+                    <option value="평택본사운송팀">평택본사운송팀</option>
+                    <option value="인천사무소">인천사무소</option>
+                    <option value="의왕사무소">의왕사무소</option>
+                    <option value="광양사무소">광양사무소</option>
+                    <option value="부산사무소">부산사무소</option>
+                </select>
             </div>
             <div class="save-hist-field">
                 <label>수신처 (포딩사/화주) *</label>
@@ -34614,7 +34635,7 @@ function downloadCartPDF() {
         return `
         <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        .card{background:white;width:480px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-size:12px;}
+        .card{background:white;width:620px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-size:12px;}
         .hd{background:#1e3a8a;padding:14px 16px 10px;}
         .hd-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
         .logo{width:40px;height:40px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;}
@@ -34627,11 +34648,11 @@ function downloadCartPDF() {
         .vat{color:#dc2626;font-weight:700;}
         .tbl{width:100%;border-collapse:collapse;}
         .tbl th{background:#1e3a8a;color:white;padding:5px 6px;text-align:center;font-size:10px;font-weight:600;}
-        .tbl td{padding:5px 6px;border-bottom:0.5px solid #e2e8f0;color:#1e293b;}
+        .tbl td{padding:5px 6px;border-bottom:0.5px solid #e2e8f0;color:#1e293b;word-break:break-all;}
         .tbl tr:nth-child(even) td{background:#f8fafc;}
         .no{text-align:center;color:#94a3b8;width:24px;}
         .org{color:#0369a1;font-weight:700;}
-        .dest{color:#0f766e;}
+        .dest{color:#0f766e;min-width:80px;}
         .ctr{text-align:center;}
         .amt{text-align:right;font-weight:700;}
         .dt-label{background:#334155;color:white;font-size:10px;font-weight:700;padding:5px 14px;letter-spacing:0.5px;}
@@ -34734,6 +34755,7 @@ async function downloadCartExcel() {
     const ws = wb.addWorksheet('운임견적서');
 
     // 8컬럼 (실작업지 추가)
+    // 컬럼 너비 초기 설정 (내용 기반 자동 조정)
     ws.columns = [
         { width: 5 },  // A: NO
         { width: 13 }, // B: 출발거점
@@ -34744,6 +34766,26 @@ async function downloadCartExcel() {
         { width: 35 }, // G: 할증
         { width: 13 }, // H: 견적금액
     ];
+
+    // 내용 기반 컬럼 너비 자동 조정 함수
+    function autoFitColumns(worksheet) {
+        worksheet.columns.forEach((column, colIdx) => {
+            let maxLen = column.width || 10;
+            worksheet.eachRow({ includeEmpty: false }, (row) => {
+                const cell = row.getCell(colIdx + 1);
+                if (cell.value) {
+                    const cellStr = String(cell.value);
+                    const lines = cellStr.split('\n');
+                    const lineMax = Math.max(...lines.map(l => {
+                        // 한글은 2배 너비로 계산
+                        return [...l].reduce((sum, ch) => sum + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+                    }));
+                    if (lineMax + 2 > maxLen) maxLen = lineMax + 2;
+                }
+            });
+            column.width = Math.min(maxLen, 60); // 최대 60
+        });
+    }
 
     const navy  = { argb: 'FF1E3A8A' };
     const white = { argb: 'FFFFFFFF' };
@@ -34921,6 +34963,7 @@ async function downloadCartExcel() {
     footer.value = '당사와의 소중한 거래에 감사드리며, 신속하고 안전한 운송 서비스로 최선을 다하겠습니다.\n주식회사 경평물류';
     footer.style = { font: { name: '맑은 고딕', size: 10, bold: true, color: navy }, fill: { type: 'pattern', pattern: 'solid', fgColor: {argb:'FFF0F9FF'} }, alignment: { horizontal: C, vertical: M, wrapText: true } };
 
+    autoFitColumns(ws);
         const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
@@ -35092,6 +35135,7 @@ function openSaveHistModal(cartSnapshot) {
     if (!items.length) { alert('견적 카트에 담긴 내용이 없습니다.'); return; }
     window._histCartSnapshot = items;
     document.getElementById('histManager').value = '';
+    document.getElementById('histOffice').value = '';
     document.getElementById('histCompany').value = '';
     document.getElementById('histNote').value = '';
 
@@ -35140,8 +35184,10 @@ function closeSaveHistOutside(e) {
 
 function confirmSaveHist() {
     const manager = document.getElementById('histManager').value.trim();
+    const office = document.getElementById('histOffice').value.trim();
     const company = document.getElementById('histCompany').value.trim();
     if (!manager) { alert('담당자를 입력해주세요.'); return; }
+    if (!office) { alert('사무소를 선택해주세요.'); return; }
     if (!company) { alert('수신처를 입력해주세요.'); return; }
     const items = window._histCartSnapshot || cartItems;
 
@@ -35158,6 +35204,7 @@ function confirmSaveHist() {
         id: Date.now(),
         date: dateStr,
         manager: manager,
+        office: office,
         company: company,
         note: document.getElementById('histNote').value.trim(),
         items: items.map((it, i) => ({
@@ -35197,9 +35244,10 @@ function renderHistoryList() {
     const hist = getHistoryData();
     const q = (document.getElementById('histSearch')?.value||'').trim().toLowerCase();
     const fManager = (document.getElementById('histFilterManager')?.value||'');
+    const fOffice = (document.getElementById('histFilterOffice')?.value||'');
     const fEra = (document.getElementById('histFilterEra')?.value||'');
 
-    // 필터 드롭다운 옵션 동적 생성
+    // 담당자 드롭다운 동적 생성
     const managers = [...new Set(hist.map(h => h.manager||'').filter(Boolean))];
     const eras = [...new Set(hist.map(h => h.items?.[0]?.eraLabel||h.eraLabel||'').filter(Boolean))];
     const mSel = document.getElementById('histFilterManager');
@@ -35210,13 +35258,14 @@ function renderHistoryList() {
     }
     if (eSel) {
         const cur = eSel.value;
-        eSel.innerHTML = '<option value="">고시시기 전체</option>' + eras.map(e=>`<option value="${e}"${e===cur?' selected':''}>${e}</option>`).join('');
+        eSel.innerHTML = '<option value="">기간 전체</option>' + eras.map(e=>`<option value="${e}"${e===cur?' selected':''}>${e}</option>`).join('');
     }
 
     const filtered = hist.filter(h => {
         const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||'';
         if (q && !h.company.toLowerCase().includes(q) && !(h.manager||'').toLowerCase().includes(q) && !h.items?.some(it=>(it.origin+it.dest+it.dist).toLowerCase().includes(q))) return false;
         if (fManager && (h.manager||'') !== fManager) return false;
+        if (fOffice && (h.office||'') !== fOffice) return false;
         if (fEra && eraLabel !== fEra) return false;
         return true;
     });
@@ -35227,57 +35276,68 @@ function renderHistoryList() {
         return;
     }
 
-    const rows = filtered.map(h => {
+    const rows = filtered.map((h, idx) => {
         const eraLabel = h.items?.[0]?.eraLabel||h.eraLabel||h.condStr||'';
         const surchargeText = h.items?.[0]?.surchargeText||'';
         const discount = h.items?.[0]?.discount||0;
         const isRoundFare = h.items?.[0]?.isRoundFare||false;
         const isRoundQuote = h.items?.[0]?.isRoundQuote||false;
         const isRoundDetail = h.items?.[0]?.isRoundDetail||false;
-        const roundLabel = [isRoundFare?'고시사사오입':'',isRoundQuote?'견적사사오입':'',isRoundDetail?'상세사사오입':''].filter(Boolean).join('+');
+        const hasRound = isRoundFare || isRoundQuote || isRoundDetail;
         const badges = [
             eraLabel?`<span class="hist-cond-badge era">${eraLabel}</span>`:'',
             surchargeText?`<span class="hist-cond-badge rate">${surchargeText}</span>`:'',
             discount>0?`<span class="hist-cond-badge rate">쉐어 ${Math.round(discount*100)}%</span>`:'',
-            roundLabel?`<span class="hist-cond-badge round">${roundLabel}</span>`:'',
+            `<span class="hist-cond-badge round">사사오입 ${hasRound?'O':'X'}</span>`,
         ].filter(Boolean).join(' ');
 
         const routeStr = h.items.map((it,i)=>{
-            const c = it.clientName?`<br><span style="font-size:0.72rem;color:#64748b;">${it.clientName}</span>`:'';
-            return `${i+1}. ${it.origin} → ${it.dest}${c}`;
-        }).join('<br>');
+            return `<div style="margin-bottom:2px;">${i+1}. <span style="color:#1e3a8a;font-weight:600;">${it.origin}</span> → <span style="color:#0f6e56;">${it.dest}</span> <span style="color:#94a3b8;font-size:0.75rem;">(${it.dist}km)</span></div>`;
+        }).join('');
 
         const totalQ40 = h.items.reduce((s,it)=>s+(it.q40||0),0);
+        const totalSafe40 = h.items.reduce((s,it)=>s+(it.safe40||0),0);
         const amtCell = discount>0
-            ? `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span><br><span style="font-size:0.72rem;color:#94a3b8;">안전 ${h.items.reduce((s,it)=>s+(it.safe40||0),0).toLocaleString()}원</span>`
-            : `<span style="font-weight:700;color:#1e293b;">${totalQ40.toLocaleString()}원</span>`;
+            ? `<div style="font-weight:700;font-size:0.95rem;color:#1e293b;">${totalQ40.toLocaleString()}원</div><div style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">안전 ${totalSafe40.toLocaleString()}원</div>`
+            : `<div style="font-weight:700;font-size:0.95rem;color:#1e293b;">${totalQ40.toLocaleString()}원</div>`;
 
-        return `<tr>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;font-size:0.78rem;color:#64748b;">${h.date}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">${h.manager||'-'}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${h.company}<br>${h.note?`<span style="font-size:0.72rem;color:#94a3b8;">📌 ${h.note}</span>`:''}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;font-size:0.82rem;">${routeStr}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;">${badges}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;text-align:right;">${amtCell}</td>
-            <td style="padding:8px 10px;border-bottom:0.5px solid #e2e8f0;white-space:nowrap;">
-                <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">상세</button>
-                <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">재견적</button>
-                <button class="hist-btn hist-btn-del" onclick="deleteHist(${h.id})">🗑️</button>
+        const rowBg = idx%2===0 ? 'white' : '#f8fafc';
+        const B = '1px solid #e2e8f0';
+        return `<tr style="background:${rowBg};">
+            <td style="padding:10px 12px;border:${B};white-space:nowrap;font-size:0.78rem;color:#64748b;vertical-align:top;">${h.date.replace(' ','<br>')}</td>
+            <td style="padding:10px 12px;border:${B};white-space:nowrap;vertical-align:top;">
+                <div style="font-weight:600;">${h.manager||'-'}</div>
+                ${h.office?`<div style="font-size:0.72rem;color:#64748b;margin-top:2px;">${h.office}</div>`:''}
             </td>
+            <td style="padding:10px 12px;border:${B};vertical-align:top;">
+                <div style="font-weight:600;">${h.company}</div>
+            </td>
+            <td style="padding:10px 12px;border:${B};vertical-align:top;font-size:0.83rem;">${routeStr}</td>
+            <td style="padding:10px 12px;border:${B};vertical-align:top;">${badges}</td>
+            <td style="padding:10px 12px;border:${B};text-align:right;vertical-align:top;">${amtCell}</td>
+            <td style="padding:10px 12px;border:${B};white-space:nowrap;vertical-align:top;">
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <button class="hist-btn hist-btn-view" onclick="openPreviewFromHist(${h.id})">상세</button>
+                    <button class="hist-btn hist-btn-requote" onclick="openRequoteModal(${h.id})">재견적</button>
+                    <button class="hist-btn hist-btn-del" onclick="deleteHist(${h.id})">🗑️</button>
+                </div>
+            </td>
+            <td style="padding:10px 12px;border:${B};vertical-align:top;color:#334155;font-size:0.83rem;">${h.note||'-'}</td>
         </tr>`;
     }).join('');
 
-    el.innerHTML = `<div style="overflow-x:auto; border:0.5px solid #e2e8f0; border-radius:10px;">
-        <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+    el.innerHTML = `<div style="overflow-x:auto; border:1px solid #cbd5e1; border-radius:10px;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem; table-layout:auto;">
             <thead>
-                <tr style="background:#f8fafc;">
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">일시</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;white-space:nowrap;color:#475569;font-weight:600;">담당자</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">수신처</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">구간</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:left;color:#475569;font-weight:600;">조건</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;text-align:right;color:#475569;font-weight:600;">견적금액(40ft)</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid #cbd5e1;"></th>
+                <tr style="background:#1e3a8a;">
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;white-space:nowrap;color:white;font-weight:600;font-size:0.82rem;">일시</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;white-space:nowrap;color:white;font-weight:600;font-size:0.82rem;">담당자</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;color:white;font-weight:600;font-size:0.82rem;">수신처</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;color:white;font-weight:600;font-size:0.82rem;">구간</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;color:white;font-weight:600;font-size:0.82rem;">조건</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:right;color:white;font-weight:600;font-size:0.82rem;">견적금액(40ft)</th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;color:white;font-weight:600;font-size:0.82rem;"></th>
+                    <th style="padding:10px 12px;border:1px solid #1e40af;text-align:left;color:white;font-weight:600;font-size:0.82rem;">비고</th>
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -35443,7 +35503,7 @@ function saveRequoteAsNew() {
     setHistoryData(hist);
     sendToGoogleSheet(newRecord);
     closeRequoteModal();
-    renderHistoryList();
+    switchMainTab('history');
     alert('✅ 재견적 결과가 새 이력으로 저장되었습니다.');
 }
 
