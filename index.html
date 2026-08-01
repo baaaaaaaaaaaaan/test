@@ -32514,9 +32514,7 @@ function selectOrigin(type, text) {
     // 창고 모드 해제 시 기존 요소 복원
     if (type !== 'wh') {
         document.querySelectorAll('.fare-section').forEach(el => el.style.display = '');
-        document.getElementById('detailTitleWrap')?.style && (document.getElementById('detailTitleWrap').style.display = '');
-    document.getElementById('detailTableWrap')?.style && (document.getElementById('detailTableWrap').style.display = '');
-        document.querySelector('.detail-table')?.style && (document.querySelector('.detail-table').style.display = '');
+        // detailTitleWrap/detailTableWrap은 runSearch 결과에 따라 별도 제어 (여기서 복원하지 않음)
         const roundAllBtn = document.getElementById('btnRoundAll');
         if (roundAllBtn) roundAllBtn.style.display = '';
         const carrierWrap = document.getElementById('carrierBtnWrap');
@@ -32896,13 +32894,13 @@ function showMapPanel(lat, lng, placeName) {
 // ─── 거점별 출발지 주소/좌표 매핑 ───────────────────────────────
 const ORIGIN_ADDR_MAP = {
     '평택항 기점':    { name: '한진평택컨테이너터미널', addr: '경기도 평택시 포승읍 평택항만길 181-57', lat: 36.9745, lng: 126.8302 },
-    '부산신항 기점':  { name: '부산신항', addr: '부산광역시 강서구 성북동 1475', lat: 35.0726, lng: 128.8138 },
+    '부산신항 기점':  { name: '부산신항국제터미널', addr: '부산광역시 강서구 신항남로 330', lat: 35.0726, lng: 128.8138 },
     '부산북항 기점':  { name: '부산북항(신선대)', addr: '부산광역시 남구 신선로 294', lat: 35.0749, lng: 129.0784 },
     '인천항 기점':    { name: '인천항(내항)', addr: '인천광역시 중구 항동7가 1', lat: 37.4685, lng: 126.6167 },
-    '인천신항 기점':  { name: '인천신항(SNCT)', addr: '인천광역시 연수구 신항대로 707', lat: 37.3516, lng: 126.6186 },
-    '인천국제여객 기점': { name: '인천국제여객터미널', addr: '인천광역시 연수구 국제항만대로326번길 57', lat: 37.3906, lng: 126.6361 },
-    '광양항 기점':    { name: '광양항(컨테이너부두)', addr: '전라남도 광양시 항만대로 465', lat: 34.9178, lng: 127.7289 },
-    '의왕ICD 기점':   { name: '의왕ICD 제1터미널', addr: '경기도 의왕시 오봉로 175', lat: 37.3547, lng: 126.9984 },
+    '인천신항 기점':  { name: '선광신컨테이너터미널', addr: '인천광역시 연수구 인천신항대로 707', lat: 37.3516, lng: 126.6186 },
+    '인천국제여객 기점': { name: '인천항국제여객터미널', addr: '인천광역시 연수구 국제항만대로326번길 57', lat: 37.3906, lng: 126.6361 },
+    '광양항 기점':    { name: '광양항서부컨테이너터미널', addr: '전라남도 광양시 컨부두로 150', lat: 34.9178, lng: 127.7289 },
+    '의왕ICD 기점':   { name: '의왕ICD 제2터미널', addr: '경기도 의왕시 오봉로 175', lat: 37.3547, lng: 126.9984 },
 };
 
 function openMapModal() {
