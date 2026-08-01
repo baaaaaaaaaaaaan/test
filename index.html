@@ -35239,12 +35239,14 @@ function confirmSaveHist() {
             clientName: clientNames[i] || it.clientName || '',
         })),
     };
-    const hist = getHistoryData();
-    hist.unshift(record);
-    setHistoryData(hist);
     closeSaveHistModal();
     closeCartModal();
-    sendToGoogleSheet(record);
+    fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+    });
     alert('✅ 견적 이력이 저장되었습니다.');
     switchMainTab('history');
 }
@@ -35264,20 +35266,20 @@ function sendToGoogleSheet(record) {
 
 // ─── 구글 시트에서 이력 불러오기 ───────────────────────────────
 function loadHistoryFromSheet() {
-    if (!SHEET_URL) return;
+    if (!SHEET_URL) { renderHistoryList(); return; }
+    document.getElementById('historyList').innerHTML = '<div class="hist-empty">⏳ 이력 불러오는 중...</div>';
     fetch(SHEET_URL + '?t=' + Date.now())
         .then(r => r.json())
         .then(res => {
-            if (res.result !== 'success' || !res.data?.length) return;
-            // 구글 시트 데이터를 앱 이력 형식으로 변환
-            const sheetData = res.data;
-            // 날짜+담당자+수신처 기준으로 그룹핑 (같은 이력의 여러 구간)
+            if (res.result !== 'success') { renderHistoryList(); return; }
+            const sheetData = res.data || [];
             const grouped = {};
+            const keyOrder = [];
             sheetData.forEach(row => {
-                const key = `${row['저장일시']}_${row['담당자']}_${row['수신처']}`;
+                const key = `${row['저장일시']}||${row['담당자']}||${row['수신처']}`;
                 if (!grouped[key]) {
                     grouped[key] = {
-                        id: Date.now() + Math.random(), // 숫자형 id로 통일
+                        id: key,
                         date: String(row['저장일시'] || ''),
                         manager: row['담당자'] || '',
                         office: row['사무소'] || '',
@@ -35287,6 +35289,7 @@ function loadHistoryFromSheet() {
                         note: row['비고'] || '',
                         items: []
                     };
+                    keyOrder.push(key);
                 }
                 const discount = row['쉐어율'] && row['쉐어율'] !== '-'
                     ? parseInt(row['쉐어율']) / 100 : 0;
@@ -35306,18 +35309,15 @@ function loadHistoryFromSheet() {
                     q40: Number(row['40FT견적']) || 0,
                     safe20: Number(row['20FT안전운임']) || 0,
                     safe40: Number(row['40FT안전운임']) || 0,
-                    hasSurcharge: row['할증내용'] && row['할증내용'] !== '-',
+                    hasSurcharge: !!(row['할증내용'] && row['할증내용'] !== '-'),
                 });
             });
-            // 로컬 이력과 병합 (구글 시트 우선, 중복 제거)
-            const localHist = getHistoryData().filter(h => !grouped[h.id]);
-            const sheetHist = Object.values(grouped).reverse();
-            const merged = [...sheetHist, ...localHist]
-                .sort((a, b) => b.date.localeCompare(a.date));
-            setHistoryData(merged);
+            // 구글 시트 데이터만 사용 (최신순)
+            const sheetHist = keyOrder.reverse().map(k => grouped[k]);
+            setHistoryData(sheetHist);
             renderHistoryList();
         })
-        .catch(err => console.log('시트 조회 오류:', err));
+        .catch(err => { console.log('시트 조회 오류:', err); renderHistoryList(); });
 }
 
 // ─── 이력 목록 렌더링 ───────────────────────────────
@@ -35438,9 +35438,26 @@ function renderHistoryList() {
 function deleteHist(idx) {
     if (!confirm('이 이력을 삭제하시겠습니까?')) return;
     const hist = getHistoryData();
-    hist.splice(idx, 1);
-    setHistoryData(hist);
-    renderHistoryList();
+    const record = hist[idx];
+    if (!record) return;
+    // 구글 시트에서 삭제
+    if (SHEET_URL && record.id) {
+        fetch(SHEET_URL + '?action=delete&key=' + encodeURIComponent(record.id))
+            .then(() => {
+                hist.splice(idx, 1);
+                setHistoryData(hist);
+                renderHistoryList();
+            })
+            .catch(() => {
+                hist.splice(idx, 1);
+                setHistoryData(hist);
+                renderHistoryList();
+            });
+    } else {
+        hist.splice(idx, 1);
+        setHistoryData(hist);
+        renderHistoryList();
+    }
 }
 
 // ─── 견적서 미리보기 팝업 ───────────────────────────────
