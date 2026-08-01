@@ -35139,7 +35139,10 @@ function switchMainTab(tabName) {
     });
     document.getElementById('page-search').classList.toggle('active', tabName === 'search');
     document.getElementById('page-history').classList.toggle('active', tabName === 'history');
-    if (tabName === 'history') renderHistoryList();
+    if (tabName === 'history') {
+        loadHistoryFromSheet();
+        renderHistoryList();
+    }
 }
 
 // ─── 견적 이력 데이터 (localStorage) ───────────────────────────────
@@ -35246,21 +35249,74 @@ function confirmSaveHist() {
 }
 
 // ─── 구글시트 연동 ───────────────────────────────
-const SHEET_URL = ''; // Apps Script 배포 URL을 여기에 입력
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyLTcS2jcgBh-NrKf_apQLijgteqgtaeB_F5x0AamCln28hjTRexn7IEnQDEmPVJerFng/exec';
 
 function sendToGoogleSheet(record) {
     if (!SHEET_URL) return;
-    const rows = record.items.map(it => [
-        record.date, record.company, record.manager||'', record.note||'',
-        it.origin, it.workAddr||'', it.dest, it.dist,
-        it.eraLabel||'', record.condStr,
-        it.q20, it.q40, it.surchargeText||'-'
-    ]);
     fetch(SHEET_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({action:'append', rows:rows})
-    }).catch(e => console.log('시트 저장 실패:', e));
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+    }).catch(err => console.log('시트 저장 오류:', err));
+}
+
+// ─── 구글 시트에서 이력 불러오기 ───────────────────────────────
+function loadHistoryFromSheet() {
+    if (!SHEET_URL) return;
+    fetch(SHEET_URL + '?t=' + Date.now())
+        .then(r => r.json())
+        .then(res => {
+            if (res.result !== 'success' || !res.data?.length) return;
+            // 구글 시트 데이터를 앱 이력 형식으로 변환
+            const sheetData = res.data;
+            // 날짜+담당자+수신처 기준으로 그룹핑 (같은 이력의 여러 구간)
+            const grouped = {};
+            sheetData.forEach(row => {
+                const key = `${row['저장일시']}_${row['담당자']}_${row['수신처']}`;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        id: key,
+                        date: String(row['저장일시'] || ''),
+                        manager: row['담당자'] || '',
+                        office: row['사무소'] || '',
+                        company: row['수신처'] || '',
+                        fareType: row['운임방식']?.includes('쉐어') ? 'share' :
+                                  row['운임방식'] === '운수사간' ? 'inter' : 'safe',
+                        note: row['비고'] || '',
+                        items: []
+                    };
+                }
+                const discount = row['쉐어율'] && row['쉐어율'] !== '-'
+                    ? parseInt(row['쉐어율']) / 100 : 0;
+                grouped[key].items.push({
+                    origin: row['출발거점'] || '',
+                    clientName: row['화주명'] || '',
+                    workAddr: row['실작업지주소'] || '',
+                    dest: row['운임구간'] || '',
+                    dist: row['거리'] || '',
+                    eraLabel: row['고시시기'] || '',
+                    surchargeText: row['할증내용'] || '-',
+                    discount: discount,
+                    isRoundFare: row['사사오입'] === 'O',
+                    isRoundQuote: row['사사오입'] === 'O',
+                    isRoundDetail: row['사사오입'] === 'O',
+                    q20: Number(row['20FT견적']) || 0,
+                    q40: Number(row['40FT견적']) || 0,
+                    safe20: Number(row['20FT안전운임']) || 0,
+                    safe40: Number(row['40FT안전운임']) || 0,
+                    hasSurcharge: row['할증내용'] && row['할증내용'] !== '-',
+                });
+            });
+            // 로컬 이력과 병합 (구글 시트 우선, 중복 제거)
+            const localHist = getHistoryData().filter(h => !grouped[h.id]);
+            const sheetHist = Object.values(grouped).reverse();
+            const merged = [...sheetHist, ...localHist]
+                .sort((a, b) => b.date.localeCompare(a.date));
+            setHistoryData(merged);
+            renderHistoryList();
+        })
+        .catch(err => console.log('시트 조회 오류:', err));
 }
 
 // ─── 이력 목록 렌더링 ───────────────────────────────
