@@ -264,7 +264,7 @@
         }
         
         .quote-section { margin-top: 12px;
-            padding: 12px; border-radius: 10px; background: #dcfce7; border: 1px solid #86efac; margin-bottom: 12px; display:flex; flex-direction:column;;
+            padding: 12px; border-radius: 10px; background: #dcfce7; border: 1px solid #86efac; margin-bottom: 12px;;
         }
         .quote-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #166534;
             padding-bottom: 6px; font-weight: 700; font-size: 0.9rem; color: #14532d; }
@@ -656,13 +656,13 @@
             </div>
             <div style="display:flex; gap:6px; margin-top:10px;">
                 <button class="copy-btn copy-btn-flex" id="copyBtn" onclick="copyQuoteText()" style="margin-top:0; flex:1;">📋 견적 내용 복사</button>
-                <button class="copy-btn copy-btn-flex" id="copyBtn20" onclick="copyQuoteText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0;">20FT</button>
-                <button class="copy-btn copy-btn-flex" id="copyBtn40" onclick="copyQuoteText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0;">40FT</button>
+                <button class="copy-btn copy-btn-flex" id="copyBtn20" onclick="copyQuoteText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
+                <button class="copy-btn copy-btn-flex" id="copyBtn40" onclick="copyQuoteText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
             </div>
             <div id="carrierBtnWrap" style="display:flex; gap:6px; margin-top:10px; width:100%; box-sizing:border-box;">
                 <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1;">🚚 운수사 거래용 복사</button>
-                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0;">20FT</button>
-                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0;">40FT</button>
+                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
+                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
             </div>
             <button id="cmpModalBtn" class="copy-btn" onclick="openCmpModal()" style="margin-top:8px; background:#475569;">📊 2월 / 8월 운임 비교</button>
             <button class="copy-btn" onclick="addToCart()" style="margin-top:8px; background:#166534; font-size:0.95rem;">🛒 견적 담기</button>
