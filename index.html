@@ -663,9 +663,9 @@
                 <button class="copy-btn copy-btn-flex" id="copyBtn40" onclick="copyQuoteText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
             </div>
             <div id="carrierBtnWrap" style="display:flex; gap:6px; margin-top:10px; width:100%;">
-                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1;">🚚 운수사 거래용 복사</button>
-                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
-                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
+                <button class="copy-btn copy-btn-flex" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1; background:#2563eb;">🚚 운수사 거래용 복사</button>
+                <button class="copy-btn copy-btn-flex" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px; background:#2563eb;">20FT</button>
+                <button class="copy-btn copy-btn-flex" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px; background:#2563eb;">40FT</button>
             </div>
             <button id="cmpModalBtn" class="copy-btn copy-btn-full" onclick="openCmpModal()" style="margin-top:8px; background:#475569;">📊 2월 / 8월 운임 비교</button>
             <button class="copy-btn copy-btn-full" onclick="addToCart()" style="margin-top:8px; background:#166534; font-size:0.95rem;">🛒 견적 담기</button>
@@ -32521,7 +32521,7 @@ function selectOrigin(type, text) {
         const roundAllBtn = document.getElementById('btnRoundAll');
         if (roundAllBtn) roundAllBtn.style.display = '';
         const carrierWrap = document.getElementById('carrierBtnWrap');
-        if (carrierWrap) carrierWrap.style.display = '';
+        if (carrierWrap) { carrierWrap.style.display = 'flex'; carrierWrap.style.width = '100%'; }
         const whCard = document.getElementById('whResultCard');
         if (whCard) whCard.remove();
     }
