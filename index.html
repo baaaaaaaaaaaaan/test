@@ -286,14 +286,17 @@
             font-weight: 700; padding: 2px 8px; border-radius: 12px; border: 1px solid #14532d;
         }
         
-        .copy-btn { width: 100%;
+        .copy-btn { width: auto;
             margin-top: 10px; padding: 12px; background: #1e293b; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer;
             transition: background 0.15s; box-sizing: border-box; }
+        .copy-btn-full { width: 100%; }
         .copy-btn-flex { width: auto !important; }
         .copy-btn:hover { background: #0f172a;
         }
         .copy-btn.carrier-btn { background: #2563eb; width: auto; }
         .copy-btn.carrier-btn:hover { background: #1d4ed8; }
+        .copy-btn-blue { background: #2563eb !important; }
+        .copy-btn-blue:hover { background: #1d4ed8 !important; }
         .copy-btn-row { display: flex; gap: 8px; margin-top: 6px; }
         .copy-btn-row .copy-btn { margin-top: 0; font-size: 0.82rem; padding: 9px 0; }
         .copy-btn-row .copy-btn.ft-btn { background: #0f4c8a; }
@@ -654,18 +657,18 @@
                     <div id="m40" class="margin-badge"></div>
                 </div>
             </div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
+            <div style="display:flex; gap:6px; margin-top:10px; width:100%;">
                 <button class="copy-btn copy-btn-flex" id="copyBtn" onclick="copyQuoteText()" style="margin-top:0; flex:1;">📋 견적 내용 복사</button>
                 <button class="copy-btn copy-btn-flex" id="copyBtn20" onclick="copyQuoteText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
                 <button class="copy-btn copy-btn-flex" id="copyBtn40" onclick="copyQuoteText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
             </div>
-            <div id="carrierBtnWrap" style="display:flex; gap:6px; margin-top:10px; width:100%; box-sizing:border-box;">
-                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1;">🚚 운수사 거래용 복사</button>
-                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
-                <button class="copy-btn copy-btn-flex carrier-btn" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
+            <div id="carrierBtnWrap" style="display:flex; gap:6px; margin-top:10px; width:100%;">
+                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn" onclick="copyCarrierFareText()" style="margin-top:0; flex:1;">🚚 운수사 거래용 복사</button>
+                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn20" onclick="copyCarrierFareText('20')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">20FT</button>
+                <button class="copy-btn copy-btn-flex copy-btn-blue" id="copyCarrierBtn40" onclick="copyCarrierFareText('40')" style="margin-top:0; padding:12px 10px; flex-shrink:0; min-width:52px;">40FT</button>
             </div>
-            <button id="cmpModalBtn" class="copy-btn" onclick="openCmpModal()" style="margin-top:8px; background:#475569;">📊 2월 / 8월 운임 비교</button>
-            <button class="copy-btn" onclick="addToCart()" style="margin-top:8px; background:#166534; font-size:0.95rem;">🛒 견적 담기</button>
+            <button id="cmpModalBtn" class="copy-btn copy-btn-full" onclick="openCmpModal()" style="margin-top:8px; background:#475569;">📊 2월 / 8월 운임 비교</button>
+            <button class="copy-btn copy-btn-full" onclick="addToCart()" style="margin-top:8px; background:#166534; font-size:0.95rem;">🛒 견적 담기</button>
         </div>
 
             </div>
@@ -32509,7 +32512,6 @@ function isDistanceMode(type) {
 
 function selectOrigin(type, text) {
     currentType = type;
-    currentItem = null;
     eraState[currentEra].originLabel = text;
 
     // 창고 모드 해제 시 기존 요소 복원
@@ -32555,6 +32557,10 @@ function selectOrigin(type, text) {
 
     const listEl = document.getElementById('kakaoSuggestList');
     if (listEl) { listEl.classList.remove('open'); listEl.innerHTML = ''; }
+
+    // 할증 상세내역 숨기기
+    document.getElementById('detailTitleWrap').style.display = 'none';
+    document.getElementById('detailTableWrap').style.display = 'none';
 
     // 현재 검색된 행선지가 있으면 새 거점으로 재계산
     if (currentItem) {
